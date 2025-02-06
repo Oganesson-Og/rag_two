@@ -12,14 +12,14 @@ License: MIT
 
 import os
 from pathlib import Path
-from ..nlp import Tokenizer  # Updated import
-from ..nlp import SearchEngine
+from ..nlp.tokenizer import UnifiedTokenizer, default_tokenizer  # Fixed import
+from ..nlp.search import SearchEngine
 from ..utils.token_counter import num_tokens_from_string
 from datetime import date
 from enum import IntEnum, Enum
-print("Current working directory:", os.getcwd())
 import rag.utils
 from nlp import search
+
 LIGHTEN = int(os.environ.get('LIGHTEN', "0"))
 
 # Base paths
@@ -27,7 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 PROJECT_ROOT = BASE_DIR.parent
 
 # Initialize tokenizer
-tokenizer = Tokenizer()
+tokenizer = UnifiedTokenizer()
 
 # Data paths
 DATA_DIR = PROJECT_ROOT / "Form 4"
