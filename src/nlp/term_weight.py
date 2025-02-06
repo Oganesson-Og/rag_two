@@ -1,3 +1,40 @@
+"""
+Term Weight Module
+----------------
+
+Advanced term weighting system for natural language processing tasks.
+Implements multiple weighting strategies including IDF, NER, and custom weights.
+
+Features:
+- Term frequency analysis
+- Named Entity Recognition (NER) weighting
+- Part-of-speech based weighting
+- Custom stop word handling
+- Token merging strategies
+
+Key Components:
+1. Frequency Analysis: Document and corpus-level statistics
+2. NER Integration: Entity-based weight adjustment
+3. POS Tagging: Part-of-speech based weighting
+4. Token Processing: Merging and preprocessing
+
+Technical Details:
+- Efficient numpy operations
+- Regular expression patterns
+- Custom tokenization rules
+- Weight normalization
+- Configurable parameters
+
+Dependencies:
+- numpy>=1.19.0
+- regex>=2022.1.18
+- nltk>=3.6.0
+
+Author: Keith Satuku
+Created: 2025
+License: MIT
+"""
+
 import logging
 import math
 import json
@@ -75,7 +112,7 @@ class Dealer:
 
     def pretoken(self, txt, num=False, stpwd=True):
         patt = [
-            r"[~—\t @#%!<>,\.\?\":;'\{\}\[\]_=\(\)\|，。？》•●○↓《；‘’：“”【¥ 】…￥！、·（）×`&\\/「」\\]"
+            r"[~—\t @#%!<>,\.\?\":;'\{\}\[\]_=\(\)\|，。？》•●○↓《；‘'：""【¥ 】…￥！、·（）×`&\\/「」\\]"
         ]
         rewt = [
         ]

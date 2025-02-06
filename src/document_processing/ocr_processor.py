@@ -1,3 +1,47 @@
+"""
+OCR Processing Module
+-------------------
+
+Advanced OCR system optimized for academic and technical documents.
+Provides high-accuracy text extraction with specialized preprocessing.
+
+Features:
+- Image preprocessing
+- Text extraction
+- Confidence scoring
+- Language detection
+- Layout analysis
+- Table recognition
+- Multi-format support
+
+Key Components:
+1. Image Processing: Enhancement and normalization
+2. OCR Engine: Text extraction and recognition
+3. Post-processing: Text cleanup and formatting
+4. Quality Assessment: Confidence scoring
+5. Layout Analysis: Structure detection
+
+Technical Details:
+- Adaptive thresholding
+- Noise reduction
+- DPI normalization
+- Character recognition
+- Language detection
+- Confidence scoring
+- Format preservation
+
+Dependencies:
+- pytesseract>=0.3.10
+- opencv-python>=4.8.0
+- Pillow>=10.0.0
+- numpy>=1.24.0
+
+Author: Keith Satuku
+Version: 2.1.0
+Created: 2025
+License: MIT
+"""
+
 import pytesseract
 from PIL import Image
 import cv2

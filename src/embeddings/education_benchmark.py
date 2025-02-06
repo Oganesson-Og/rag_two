@@ -1,3 +1,75 @@
+"""
+Educational Embedding Benchmark Module
+----------------------------------
+
+Specialized benchmarking system for evaluating embedding models in educational
+contexts, with focus on academic content understanding and representation.
+
+Features:
+- Subject-specific testing
+- Concept similarity evaluation
+- Hierarchical relationship testing
+- Educational content relevance
+- Cross-domain analysis
+- Semantic accuracy testing
+- Taxonomy alignment
+
+Key Components:
+1. Subject Tests: Domain-specific evaluation
+2. Concept Analysis: Similarity and relationships
+3. Hierarchy Testing: Knowledge structure validation
+4. Performance Metrics: Comprehensive evaluation
+5. Reporting System: Detailed analysis output
+
+Technical Details:
+- Custom evaluation metrics
+- Statistical analysis tools
+- Automated test generation
+- Performance profiling
+- Resource monitoring
+- Comparative analysis
+- Visualization support
+
+Dependencies:
+- numpy>=1.24.0
+- pandas>=2.1.0
+- matplotlib>=3.8.0
+- seaborn>=0.13.0
+- scikit-learn>=1.3.0
+- torch>=2.0.0
+- plotly>=5.18.0
+
+Example Usage:
+    # Basic benchmarking
+    benchmark = EducationBenchmark(
+        subject='physics',
+        level='a-level'
+    )
+    results = benchmark.run_education_benchmark()
+    
+    # Custom evaluation
+    results = benchmark.evaluate_model(
+        model_key='scibert',
+        test_cases=custom_tests
+    )
+    
+    # Generate reports
+    benchmark.generate_report('benchmark_results.pdf')
+
+Evaluation Metrics:
+- Concept similarity accuracy
+- Hierarchical preservation
+- Cross-reference accuracy
+- Domain relevance scores
+- Response time analysis
+- Memory efficiency metrics
+
+Author: Keith Satuku
+Version: 2.4.0
+Created: 2025
+License: MIT
+""" 
+
 from typing import List, Dict, Optional
 import numpy as np
 from .benchmark import EmbeddingBenchmark
@@ -142,67 +214,3 @@ class EducationBenchmark(EmbeddingBenchmark):
                 
                 print(f"\nSubject Relevance: {edu_metrics['subject_relevance']:.3f}")
 
-"""
-Educational Embedding Benchmark Module
-----------------------------------
-
-Specialized benchmarking system for evaluating embedding models in educational
-contexts, with focus on academic content understanding and representation.
-
-Key Features:
-- Subject-specific testing
-- Concept similarity evaluation
-- Hierarchical relationship testing
-- Educational content relevance metrics
-- Cross-domain performance analysis
-- Semantic accuracy assessment
-- Educational taxonomy alignment
-
-Technical Details:
-- Custom evaluation metrics
-- Statistical analysis tools
-- Automated test generation
-- Performance profiling
-- Resource utilization tracking
-- Comparative analysis
-- Visualization tools
-
-Dependencies:
-- numpy>=1.24.0
-- pandas>=2.1.0
-- matplotlib>=3.8.0
-- seaborn>=0.13.0
-- scikit-learn>=1.3.0
-- torch>=2.0.0
-- plotly>=5.18.0
-
-Example Usage:
-    # Basic benchmarking
-    benchmark = EducationBenchmark(
-        subject='physics',
-        level='a-level'
-    )
-    results = benchmark.run_education_benchmark()
-    
-    # Custom evaluation
-    results = benchmark.evaluate_model(
-        model_key='scibert',
-        test_cases=custom_tests
-    )
-    
-    # Generate reports
-    benchmark.generate_report('benchmark_results.pdf')
-
-Evaluation Metrics:
-- Concept similarity accuracy
-- Hierarchical preservation
-- Cross-reference accuracy
-- Domain relevance scores
-- Response time analysis
-- Memory efficiency metrics
-
-Author: Keith Satuku
-Version: 2.4.0
-Created: 2025
-License: MIT
-""" 

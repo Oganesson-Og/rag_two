@@ -1,3 +1,47 @@
+"""
+Diagram Analysis Module
+---------------------
+
+Advanced diagram analysis system for scientific and educational content.
+Processes technical diagrams, charts, and scientific illustrations.
+
+Features:
+- Scientific notation detection
+- Relationship mapping
+- Label identification
+- Chemical structure recognition
+- Equation extraction
+- Component analysis
+- Spatial relationship detection
+
+Key Components:
+1. Scientific Notation: Mathematical and technical symbols
+2. Relationship Analysis: Component connections and flows
+3. Label Detection: Text and annotation processing
+4. Chemical Structure: Molecular and compound recognition
+5. Equation Processing: Mathematical formula extraction
+
+Technical Details:
+- Computer vision algorithms
+- OCR integration
+- Graph-based analysis
+- Pattern recognition
+- Spatial analysis
+- Symbol classification
+- Neural network models
+
+Dependencies:
+- opencv-python>=4.8.0
+- numpy>=1.24.0
+- torch>=2.0.0
+- scikit-image>=0.21.0
+
+Author: Keith Satuku
+Version: 1.5.0
+Created: 2025
+License: MIT
+"""
+
 class DiagramAnalyzer:
     def __init__(self, model_config=None):
         self.scientific_notation_model = self._load_notation_model()

@@ -1,3 +1,49 @@
+"""
+Embedding Generator Module
+------------------------
+
+Core module for generating text embeddings using transformer models.
+Provides efficient and cached embedding generation with batch processing.
+
+Features:
+- Multiple model support
+- Device optimization (CPU/GPU/MPS)
+- Caching system
+- Batch processing
+- Progress tracking
+- Memory optimization
+
+Key Components:
+1. Model Management: Loading and configuration
+2. Embedding Generation: Single and batch processing
+3. Cache System: LRU caching for efficiency
+4. Device Handling: Multi-device support
+5. Metadata Processing: Document enrichment
+
+Technical Details:
+- Transformer architecture
+- Normalized embeddings
+- Automatic device selection
+- Memory-efficient batching
+- Progress monitoring
+
+Dependencies:
+- torch>=2.0.0
+- transformers>=4.30.0
+- numpy>=1.24.0
+- tqdm>=4.65.0
+
+Example Usage:
+    generator = EmbeddingGenerator(model_name='minilm')
+    embedding = generator.generate_embeddings("Sample text")
+    batch_embeddings = generator.generate_embeddings(["Text 1", "Text 2"])
+
+Author: Keith Satuku
+Version: 2.0.0
+Created: 2025
+License: MIT
+""" 
+
 from typing import List, Dict, Optional, Union
 import torch
 from transformers import AutoTokenizer, AutoModel
@@ -139,3 +185,4 @@ class EmbeddingGenerator:
 
 # Create default instance
 embedding_generator = EmbeddingGenerator(**EMBEDDING_CONFIG) 
+
