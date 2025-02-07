@@ -58,11 +58,11 @@ class UnifiedTokenizer:
         self.stemmer = PorterStemmer()
         self.lemmatizer = WordNetLemmatizer()
         
-        # Compile regex patterns
+        # Updated regex patterns without Unicode properties
         self.patterns = {
             TokenType.NUMBER: re.compile(r'\d+(?:\.\d+)?'),
-            TokenType.PUNCTUATION: re.compile(r'[^\w\s]'),
-            TokenType.SPECIAL: re.compile(r'[^a-zA-Z0-9\s\p{P}]')
+            TokenType.PUNCTUATION: re.compile(f'[{re.escape(string.punctuation)}]'),
+            TokenType.SPECIAL: re.compile(r'[^a-zA-Z0-9\s' + re.escape(string.punctuation) + r']')
         }
     
     def tokenize(self, text: str) -> List[Token]:

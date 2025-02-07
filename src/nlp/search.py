@@ -15,12 +15,12 @@ import re
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Union, Tuple
 
-from rag.utils import rmSpace
-import numpy as np
-from utils.doc_store_conn import DocStoreConnection, MatchDenseExpr, FusionExpr, OrderByExpr
 from .tokenizer import default_tokenizer as rag_tokenizer
 from .query import default_query_processor as query
+import numpy as np
 from ..utils.text_cleaner import TextCleaner
+from ..rag.utils import rmSpace
+from ..utils.doc_store_conn import DocStoreConnection, MatchDenseExpr, FusionExpr, OrderByExpr
 
 PAGERANK_FLD = "pagerank_fea"
 TAG_FLD = "tag_feas"
