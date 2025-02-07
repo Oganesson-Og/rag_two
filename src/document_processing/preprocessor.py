@@ -44,6 +44,7 @@ License: MIT
 """
 
 import chardet
+import unicodedata
 from langdetect import detect
 from ftfy import fix_text
 import magic
@@ -136,7 +137,6 @@ class DocumentPreprocessor:
         Returns:
             Normalized text
         """
-        import unicodedata
         return unicodedata.normalize('NFKC', text)
     
     def _remove_noise(self, content: str) -> str:

@@ -63,7 +63,8 @@ import re
 from pathlib import Path
 import spacy
 from ...config.settings import CHUNK_SIZE, CHUNK_OVERLAP, SYLLABUS_PATH
-from ...nlp import Tokenizer  # Updated import
+from ...nlp.tokenizer import UnifiedTokenizer, default_tokenizer  # Fixed import
+
 
 
 
@@ -83,7 +84,7 @@ class SyllabusChunker:
         self.syllabus_topics = self._load_syllabus_topics()
         self.window_size = 512
         self.overlap = 128
-        self.tokenizer = Tokenizer()
+        self.tokenizer = UnifiedTokenizer()
         
     def _load_syllabus_topics(self) -> Dict[str, List[str]]:
         """Load syllabus topics from the syllabus file."""
