@@ -1,9 +1,64 @@
 """
 Enhanced Unified Data Model
--------------------------
+--------------------------------
 
-Comprehensive data models for RAG pipeline with support for all modalities
-and processing stages.
+Core data model system designed for RAG pipeline operations, providing comprehensive
+data structures for document processing, embedding management, and result tracking.
+
+Key Features:
+- Multi-modal content support (text, audio, image, PDF, video)
+- Comprehensive document lifecycle tracking
+- Flexible metadata management
+- Embedding vector representations
+- Chunk-level processing and relationships
+- Search and generation result structures
+- Processing metrics and event logging
+
+Technical Details:
+- Built on Pydantic for robust validation
+- UUID-based unique identifiers
+- Timestamp tracking for all operations
+- Modular enum-based stage management
+- Flexible metadata schemas
+- Forward reference handling
+
+Dependencies:
+- pydantic>=2.5.0
+- numpy>=1.24.0
+- python-dateutil>=2.8.2
+
+Example Usage:
+    # Create a new document
+    doc = Document(
+        content="Sample text",
+        modality=ContentModality.TEXT,
+        metadata={"language": "en", "encoding": "utf-8"}
+    )
+
+    # Add processing event
+    doc.add_processing_event(ProcessingEvent(
+        stage=ProcessingStage.EXTRACTED,
+        processor="TextExtractor"
+    ))
+
+    # Create and link chunks
+    chunk = Chunk(
+        document_id=doc.id,
+        text="Sample chunk",
+        start_pos=0,
+        end_pos=12
+    )
+
+Performance Considerations:
+- Optimized for frequent updates
+- Efficient metadata validation
+- Minimal memory footprint
+- Fast serialization/deserialization
+
+Author: Keith Satuku
+Version: 1.0.0
+Created: 2024
+License: MIT
 """
 
 from datetime import datetime

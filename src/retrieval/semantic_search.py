@@ -1,3 +1,68 @@
+"""
+Semantic Search Module
+--------------------------------
+
+Advanced semantic search implementation using vector embeddings for
+intelligent content retrieval based on meaning rather than exact matches.
+
+Key Features:
+- Embedding-based search
+- Configurable similarity threshold
+- Filter support
+- Context-aware search
+- Reranking capabilities
+- Batch search operations
+- Document indexing
+
+Technical Details:
+- Vector similarity calculations
+- Embedding generation
+- Threshold-based filtering
+- Context integration
+- Result reranking
+- Batch processing
+- Document management
+
+Dependencies:
+- numpy>=1.24.0
+- pydantic>=2.5.0
+- typing-extensions>=4.7.0
+
+Example Usage:
+    # Initialize semantic search
+    searcher = SemanticSearch(embedding_generator)
+    
+    # Index documents
+    searcher.index_documents(documents)
+    
+    # Basic search
+    results = searcher.search(
+        query="quantum entanglement",
+        k=3
+    )
+    
+    # Advanced search with filters
+    results = searcher.search(
+        query="quantum entanglement",
+        k=5,
+        threshold=0.7,
+        filters={"subject": "physics"},
+        context="quantum mechanics basics"
+    )
+
+Performance Considerations:
+- Efficient vector operations
+- Optimized similarity calculations
+- Smart document indexing
+- Memory-efficient storage
+- Fast batch processing
+
+Author: Keith Satuku
+Version: 1.0.0
+Created: 2024
+License: MIT
+"""
+
 from typing import List, Dict, Optional, Callable
 import numpy as np
 

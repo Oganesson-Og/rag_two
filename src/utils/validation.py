@@ -1,6 +1,50 @@
 """
 Validation Utils Module
 -------------------
+
+Input validation utilities.
+
+Key Features:
+- Text length validation
+- Numeric range validation
+- Email format validation
+- URL format validation
+- Date format validation
+- Error handling
+- Logging support
+
+Technical Details:
+- Regex validation
+- Type checking
+- Range checking
+- Format verification
+- Error handling
+- Logging integration
+
+Dependencies:
+- re
+- typing-extensions>=4.7.0
+- datetime
+
+Example Usage:
+    validator = ValidationUtils()
+    
+    # Validate text length
+    is_valid = validator.validate_text_length("text", min_length=2, max_length=10)
+    
+    # Validate numeric range
+    is_valid = validator.validate_numeric_range(5, min_value=0, max_value=10)
+    
+    # Validate email
+    is_valid = validator.validate_email("user@example.com")
+    
+    # Validate URL
+    is_valid = validator.validate_url("https://example.com")
+
+Author: Keith Satuku
+Version: 2.0.0
+Created: 2025
+License: MIT
 """
 
 from typing import Dict, List, Optional, Union, Any

@@ -1,4 +1,56 @@
-# storage/vector_store/qdrant_store.py
+"""
+Qdrant Vector Store Module
+--------------------------------
+
+Qdrant-based vector store implementation for efficient similarity search.
+
+Key Features:
+- High-performance vector search
+- Automatic collection management
+- Rich filtering capabilities
+- Batch operations support
+- Payload indexing
+- Collection optimization
+- Real-time updates
+
+Technical Details:
+- Qdrant client integration
+- GRPC communication
+- Collection initialization
+- Payload indexing
+- Vector normalization
+- Efficient filtering
+- Batch processing
+
+Dependencies:
+- qdrant-client>=1.7.0
+- numpy>=1.24.0
+- typing-extensions>=4.7.0
+
+Example Usage:
+    store = QdrantVectorStore(
+        collection_name="vectors",
+        vector_size=384,
+        host="localhost"
+    )
+    vector_id = await store.add_vector([1.0, 2.0, 3.0], {"type": "test"})
+    results = await store.search([1.0, 2.0, 3.0], k=5)
+
+Performance Considerations:
+- Optimized vector operations
+- Efficient payload filtering
+- Connection pooling
+- Batch processing
+- Query optimization
+- Index management
+- Cache strategies
+
+Author: Keith Satuku
+Version: 2.0.0
+Created: 2025
+License: MIT
+"""
+
 from typing import List, Dict, Any, Optional, Union, Tuple
 import numpy as np
 from qdrant_client import QdrantClient

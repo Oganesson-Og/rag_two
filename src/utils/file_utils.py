@@ -1,6 +1,69 @@
 """
-File Utilities
------------
+File Utilities Module
+------------------
+
+Comprehensive file operations and management utilities.
+
+Key Features:
+- Text file operations
+- JSON handling
+- File compression
+- Hash calculations
+- MIME type detection
+- Path management
+- File metadata
+
+Technical Details:
+- UTF-8 encoding
+- JSON serialization
+- GZIP compression
+- MD5/SHA256 hashing
+- MIME type detection
+- Path manipulation
+- Error handling
+
+Dependencies:
+- pathlib
+- hashlib
+- json
+- shutil
+- mimetypes
+- gzip
+- typing-extensions>=4.7.0
+
+Example Usage:
+    utils = FileUtils()
+    
+    # Read/Write operations
+    content = utils.read_text("file.txt")
+    utils.write_text("output.txt", "content")
+    
+    # JSON operations
+    data = utils.read_json("config.json")
+    utils.write_json("output.json", {"key": "value"})
+    
+    # File information
+    size = utils.get_file_size("large_file.txt")
+    mime = utils.get_mime_type("document.pdf")
+    md5 = utils.get_md5("important.doc")
+    
+    # Compression
+    compressed = utils.compress_file("data.txt")
+    decompressed = utils.decompress_file("data.txt.gz")
+
+Performance Considerations:
+- Efficient file handling
+- Memory-efficient operations
+- Chunked hash calculation
+- Optimized compression
+- Smart buffer sizes
+- Error handling
+- Path caching
+
+Author: Keith Satuku
+Version: 2.0.0
+Created: 2025
+License: MIT
 """
 
 from typing import Union, Optional, List, Dict, Any

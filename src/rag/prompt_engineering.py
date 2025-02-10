@@ -1,9 +1,60 @@
 """
 Prompt Engineering Module
------------------------
+--------------------------------
 
 Advanced prompt management system with dynamic template generation,
 context awareness, and educational content optimization.
+
+Key Features:
+- Dynamic template management
+- Context-aware prompt generation
+- Template versioning and validation
+- Performance tracking
+- Educational content optimization
+- Metadata management
+- Template caching
+
+Technical Details:
+- Template-based prompt generation
+- Variable validation system
+- Usage tracking and analytics
+- Metadata-driven template selection
+- Performance optimization features
+- Error handling and validation
+
+Dependencies:
+- string (standard library)
+- datetime (standard library)
+- logging>=2.0.0
+- pydantic>=2.5.0
+
+Example Usage:
+    # Initialize prompt generator
+    generator = PromptGenerator(config={})
+    
+    # Generate search prompt
+    search_prompt = await generator.generate_search_prompt(
+        query="Sample query",
+        context={"subject": "math"}
+    )
+    
+    # Add custom template
+    generator.add_template(
+        name="custom_template",
+        template="Custom ${variable} template",
+        required_vars=["variable"]
+    )
+
+Performance Considerations:
+- Template caching
+- Efficient variable substitution
+- Optimized validation checks
+- Metadata indexing
+
+Author: Keith Satuku
+Version: 1.0.0
+Created: 2024
+License: MIT
 """
 
 import logging

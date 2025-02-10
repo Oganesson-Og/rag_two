@@ -1,3 +1,65 @@
+"""
+Keyword Search Module
+--------------------------------
+
+Efficient keyword-based search implementation with support for exact matching,
+tokenization, and advanced text processing capabilities.
+
+Key Features:
+- Basic tokenization and normalization
+- Exact phrase matching
+- Token-based indexing
+- Score normalization
+- Flexible matching options
+- Case-insensitive search
+- Multi-term support
+
+Technical Details:
+- Inverted index implementation
+- Token frequency counting
+- Regular expression patterns
+- Text normalization rules
+- Score calculation methods
+- Index optimization
+- Memory-efficient storage
+
+Dependencies:
+- re (standard library)
+- collections (standard library)
+- typing-extensions>=4.7.0
+
+Example Usage:
+    # Initialize search
+    searcher = KeywordSearch()
+    
+    # Index documents
+    searcher.index_documents(documents)
+    
+    # Basic search
+    results = searcher.search(
+        query="machine learning",
+        k=3
+    )
+    
+    # Check exact matches
+    results = searcher.search(
+        query="neural networks",
+        exact_match=True
+    )
+
+Performance Considerations:
+- Efficient index structure
+- Fast token lookup
+- Optimized regex patterns
+- Memory-efficient storage
+- Quick exact matching
+
+Author: Keith Satuku
+Version: 1.0.0
+Created: 2025
+License: MIT
+"""
+
 from typing import List, Dict
 import re
 from collections import Counter

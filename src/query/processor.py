@@ -1,16 +1,52 @@
 """
 Base Query Processing Module
--------------------------
+--------------------------------
 
-Core query processing functionality for the RAG pipeline.
-Features:
-- Query analysis
-- Query expansion
-- Intent detection
-- Preprocessing pipeline
+Core query processing system designed for general content analysis and retrieval,
+providing foundational RAG pipeline functionality.
+
+Key Features:
+- Query analysis and preprocessing
+- Entity extraction and keyword identification
+- Query type classification
+- Query expansion capabilities
+- Embedding generation
+- Domain-specific processing adaptability
+
+Technical Details:
+- Uses SpaCy for linguistic analysis
+- Implements configurable preprocessing pipeline
+- Supports domain-specific configurations
+- Generates embeddings for semantic search
+- Handles various query types (questions, commands, topics)
+
+Dependencies:
+- spacy>=3.7.2
+- numpy>=1.24.0
+- pydantic>=2.5.0
+
+Example Usage:
+    # Basic query processing
+    processor = QueryProcessor(domain='general')
+    result = processor.process_query(query_text)
+
+    # Advanced processing with options
+    result = processor.process_query(
+        query_text,
+        expand=True,
+        classify=True
+    )
+
+Performance Considerations:
+- Efficient preprocessing pipeline
+- Optimized embedding generation
+- Configurable processing steps
+- Domain-specific optimizations
 
 Author: Keith Satuku
+Version: 1.0.0
 Created: 2024
+License: MIT
 """
 
 from typing import List, Dict, Optional

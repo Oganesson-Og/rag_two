@@ -1,3 +1,73 @@
+"""
+Hybrid Search Module
+--------------------------------
+
+Advanced search system combining semantic and keyword-based search strategies
+for optimal retrieval performance across different query types.
+
+Key Features:
+- Combined semantic and keyword search
+- Configurable search weights
+- Multi-query support
+- Result aggregation
+- Filter capabilities
+- Score explanation
+- Exact match boosting
+- Document indexing
+
+Technical Details:
+- Embedding-based semantic search
+- Keyword-based lexical search
+- Normalized score combination
+- Configurable thresholds
+- Vector similarity calculations
+- Result deduplication
+- Efficient indexing
+
+Dependencies:
+- numpy>=1.24.0
+- pydantic>=2.5.0
+- typing-extensions>=4.7.0
+
+Example Usage:
+    # Initialize hybrid search
+    searcher = HybridSearch(
+        embedding_generator=embedding_generator,
+        keyword_search=keyword_search
+    )
+    
+    # Index documents
+    searcher.index_documents(documents)
+    
+    # Basic search
+    results = searcher.search(
+        query="quantum mechanics",
+        k=3,
+        semantic_weight=0.7,
+        keyword_weight=0.3
+    )
+    
+    # Advanced search with filters
+    results = searcher.search(
+        query="quantum mechanics",
+        filters={"subject": "physics"},
+        exact_match_boost=1.5,
+        explain=True
+    )
+
+Performance Considerations:
+- Efficient vector operations
+- Optimized result combination
+- Smart result caching
+- Minimal memory footprint
+- Fast indexing strategies
+
+Author: Keith Satuku
+Version: 1.0.0
+Created: 2025
+License: MIT
+"""
+
 from typing import List, Dict, Optional
 import numpy as np
 

@@ -4,8 +4,35 @@ Utils Package
 
 Utility functions and classes for the RAG pipeline.
 
+Components:
+- Text cleaning and normalization
+- Token counting and management
+- Image processing utilities
+- RAG-specific tokenization
+- File operations
+- Validation utilities
+- Text utilities
+- Conversion helpers
+
+Key Features:
+- Modular utility functions
+- Consistent error handling
+- Logging integration
+- Configuration management
+- Type safety
+- Performance optimization
+
+Dependencies:
+- tiktoken>=0.5.0
+- numpy>=1.24.0
+- opencv-python>=4.8.0
+- Pillow>=10.0.0
+- nltk>=3.8.0
+- hanziconv>=0.3.2
+- datrie>=0.8.0
+
 Author: Keith Satuku
-Version: 1.0.0
+Version: 2.0.0
 Created: 2025
 License: MIT
 """

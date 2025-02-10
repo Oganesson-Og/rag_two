@@ -1,8 +1,58 @@
 """
 Enhanced RAG Pipeline
--------------------
+--------------------------------
 
-Comprehensive pipeline implementation with modular stages and robust error handling.
+Comprehensive pipeline implementation for processing documents through multiple
+stages with robust error handling and metric tracking.
+
+Key Features:
+- Modular processing stages
+- Multi-modal document support
+- Comprehensive error handling
+- Metric collection and tracking
+- Caching integration
+- Asynchronous processing
+- Flexible configuration
+
+Technical Details:
+- Async/await pattern implementation
+- Stage-based processing architecture
+- Integrated caching system
+- Vector storage capabilities
+- Comprehensive logging
+- Metric collection at each stage
+
+Dependencies:
+- asyncio>=3.4.3
+- logging>=2.0.0
+- pydantic>=2.5.0
+- numpy>=1.24.0
+
+Example Usage:
+    # Initialize pipeline
+    pipeline = Pipeline(config={})
+    
+    # Process document
+    document = await pipeline.process_document(
+        source="path/to/doc",
+        modality=ContentModality.TEXT
+    )
+    
+    # Generate response
+    result = await pipeline.generate_response(
+        query="Sample query"
+    )
+
+Performance Considerations:
+- Asynchronous processing for better throughput
+- Efficient caching mechanisms
+- Optimized error handling
+- Configurable processing stages
+
+Author: Keith Satuku
+Version: 1.0.0
+Created: 2024
+License: MIT
 """
 
 import logging

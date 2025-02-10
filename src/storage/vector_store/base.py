@@ -1,3 +1,42 @@
+"""
+Base Vector Store Module
+--------------------------------
+
+Abstract base class defining the interface for vector storage implementations.
+
+Key Features:
+- Vector storage and retrieval
+- Similarity search
+- Metadata management
+- Vector deletion
+- Metadata updates
+
+Technical Details:
+- Abstract base class implementation
+- Type hints for vectors and metadata
+- Numpy array support
+- Flexible filtering
+
+Dependencies:
+- numpy>=1.24.0
+- typing-extensions>=4.7.0
+
+Example Usage:
+    class MyVectorStore(BaseVectorStore):
+        def add_vector(self, vector, metadata=None):
+            # Implementation
+            pass
+            
+        def search(self, query_vector, k=10, filters=None):
+            # Implementation
+            pass
+
+Author: Keith Satuku
+Version: 2.0.0
+Created: 2025
+License: MIT
+""" 
+
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Union
 import numpy as np
@@ -37,4 +76,5 @@ class BaseVectorStore(ABC):
     @abstractmethod
     def update_metadata(self, vector_id: str, metadata: Dict[str, Any]) -> bool:
         """Update metadata for a stored vector."""
-        pass 
+        pass
+

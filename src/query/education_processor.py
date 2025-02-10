@@ -1,9 +1,3 @@
-from typing import List, Dict, Optional, Union, Any
-import numpy as np
-from numpy.typing import NDArray
-import logging
-from datetime import datetime
-
 """
 Educational Query Processing Module
 --------------------------------
@@ -60,6 +54,12 @@ Version: 2.0.0
 Created: 2025
 License: MIT
 """
+
+from typing import List, Dict, Optional, Union, Any
+import numpy as np
+from numpy.typing import NDArray
+import logging
+from datetime import datetime
 
 
 from .processor import QueryProcessor

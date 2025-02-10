@@ -1,3 +1,58 @@
+"""
+Cross-Modal Reasoning Module
+--------------------------------
+
+Advanced reasoning system for processing and combining queries across multiple
+modalities (text, image, audio) with intelligent embedding combination strategies.
+
+Key Features:
+- Multi-modal query processing
+- Intelligent embedding combination
+- Modality-specific relevance scoring
+- Flexible filtering capabilities
+- Comprehensive result processing
+- Configurable similarity thresholds
+- Modality-specific result retrieval
+
+Technical Details:
+- Normalized embedding combination
+- Weighted modality scoring
+- Vector similarity calculations
+- Modality-aware result ranking
+- Efficient vector operations
+- Comprehensive error handling
+
+Dependencies:
+- numpy>=1.24.0
+- pydantic>=2.5.0
+- typing-extensions>=4.7.0
+
+Example Usage:
+    # Initialize reasoner
+    reasoner = CrossModalReasoner(
+        vector_store=vector_store,
+        embedding_manager=embedding_manager
+    )
+    
+    # Process multi-modal query
+    results = reasoner.process_multimodal_query(
+        text_query="Sample text",
+        image_query=image_bytes,
+        context_filters={"subject": "science"}
+    )
+
+Performance Considerations:
+- Optimized vector operations
+- Efficient embedding normalization
+- Smart result caching
+- Configurable processing thresholds
+
+Author: Keith Satuku
+Version: 1.0.0
+Created: 2024
+License: MIT
+"""
+
 from typing import Dict, List, Optional, Union
 import numpy as np
 from ..vector_store.education_vector_store import EducationVectorStore

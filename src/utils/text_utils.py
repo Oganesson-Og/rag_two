@@ -1,6 +1,49 @@
 """
 Text Utilities
 -----------
+
+Text processing and manipulation utilities.
+
+Key Features:
+- Text normalization
+- Text sanitization
+- Email extraction
+- URL extraction
+- Text metrics
+- Case conversion
+- Text truncation
+
+Technical Details:
+- Regex processing
+- String manipulation
+- Metrics calculation
+- Case handling
+- Pattern matching
+
+Dependencies:
+- re
+- typing-extensions>=4.7.0
+
+Example Usage:
+    utils = TextUtils()
+    
+    # Normalize text
+    clean = utils.normalize_text("Some   messy    text")
+    
+    # Extract emails
+    emails = utils.extract_emails("Contact user@example.com")
+    
+    # Get text metrics
+    metrics = utils.get_text_metrics("Sample text for analysis")
+    
+    # Convert case
+    snake = utils.to_snake_case("camelCase")
+    camel = utils.to_camel_case("snake_case")
+
+Author: Keith Satuku
+Version: 2.0.0
+Created: 2025
+License: MIT
 """
 
 from typing import Dict, List, Union, Optional

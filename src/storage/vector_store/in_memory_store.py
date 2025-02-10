@@ -1,3 +1,45 @@
+"""
+In-Memory Vector Store Module
+--------------------------------
+
+Simple in-memory vector store implementation for testing and development.
+
+Key Features:
+- Fast in-memory storage
+- Basic cosine similarity search
+- Dictionary-based storage
+- UUID-based vector IDs
+- Timestamp tracking
+- Metadata management
+
+Technical Details:
+- Dictionary implementation
+- Numpy-based similarity
+- UUID generation
+- Timestamp tracking
+- Filter support
+
+Dependencies:
+- numpy>=1.24.0
+- typing-extensions>=4.7.0
+
+Example Usage:
+    store = InMemoryVectorStore()
+    vector_id = store.add_vector([1.0, 2.0, 3.0], {"type": "test"})
+    results = store.search([1.0, 2.0, 3.0], k=5)
+
+Performance Considerations:
+- Memory usage scales with vector count
+- Linear search complexity
+- No persistence
+- Suitable for small datasets
+
+Author: Keith Satuku
+Version: 2.0.0
+Created: 2025
+License: MIT
+"""
+
 import uuid
 from datetime import datetime
 from typing import Dict, List, Any

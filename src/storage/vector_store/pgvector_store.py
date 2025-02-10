@@ -1,3 +1,53 @@
+"""
+PostgreSQL Vector Store Module
+--------------------------------
+
+PostgreSQL-based vector store implementation using pgvector extension.
+
+Key Features:
+- Persistent vector storage
+- Efficient similarity search
+- Rich metadata filtering
+- Transaction support
+- Connection pooling
+- Batch operations
+- Index optimization
+
+Technical Details:
+- pgvector extension
+- PostgreSQL connection management
+- JSON metadata storage
+- Vector similarity search
+- Connection pooling
+- Error handling
+
+Dependencies:
+- psycopg2>=2.9.0
+- numpy>=1.24.0
+- typing-extensions>=4.7.0
+
+Example Usage:
+    store = PGVectorStore(connection_params={
+        "dbname": "vectors",
+        "user": "user",
+        "password": "pass"
+    })
+    vector_id = store.add_vector([1.0, 2.0, 3.0], {"type": "test"})
+    results = store.search([1.0, 2.0, 3.0], k=5)
+
+Performance Considerations:
+- Index-based search
+- Connection pooling
+- Transaction management
+- Batch processing
+- Query optimization
+
+Author: Keith Satuku
+Version: 2.0.0
+Created: 2025
+License: MIT
+"""
+
 from typing import List, Dict, Any, Optional
 import numpy as np
 from numpy.typing import NDArray

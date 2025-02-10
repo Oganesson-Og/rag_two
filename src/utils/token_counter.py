@@ -4,8 +4,39 @@ Token Counter Module
 
 Token counting utilities using tiktoken.
 
+Key Features:
+- Token counting
+- Token ID extraction
+- Token decoding
+- Multiple encodings support
+- Error handling
+- Configuration options
+
+Technical Details:
+- tiktoken integration
+- Encoding management
+- Error handling
+- Logging support
+- Type safety
+
+Dependencies:
+- tiktoken>=0.5.0
+- typing-extensions>=4.7.0
+
+Example Usage:
+    counter = TokenCounter()
+    
+    # Count tokens
+    count = counter.count_tokens("Some text to count")
+    
+    # Get token IDs
+    ids = counter.get_token_ids("Convert to token IDs")
+    
+    # Decode tokens
+    text = counter.decode_tokens([1234, 5678])
+
 Author: Keith Satuku
-Version: 1.0.0
+Version: 2.0.0
 Created: 2025
 License: MIT
 """

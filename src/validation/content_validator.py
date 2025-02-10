@@ -1,3 +1,76 @@
+"""
+Content Validator Module
+----------------------
+
+Comprehensive validation system for educational content quality and standards.
+
+Key Features:
+- Content quality validation
+- Structure validation
+- Reference checking
+- Educational standards
+- Technical validation
+- Metadata validation
+- Readability analysis
+- Fact checking
+
+Technical Details:
+- NLP-based validation
+- Transformer models
+- Spacy integration
+- Pattern matching
+- Metric calculation
+- Error handling
+- Configurable rules
+
+Dependencies:
+- spacy>=3.5.0
+- transformers>=4.30.0
+- numpy>=1.24.0
+- bs4>=4.12.0
+- validators>=0.20.0
+- typing-extensions>=4.7.0
+
+Example Usage:
+    validator = ContentValidator(
+        config_path="path/to/config.json",
+        validation_level=ValidationLevel.STRICT,
+        spacy_model="en_core_web_lg"
+    )
+    
+    # Validate content
+    results = validator.validate_content(
+        content="Educational content text...",
+        content_type="article",
+        metadata={
+            "author": "John Doe",
+            "grade_level": "high_school",
+            "subject": "physics"
+        }
+    )
+    
+    # Check validation results
+    for result in results:
+        if not result.is_valid:
+            print(f"Validation failed: {result.category}")
+            print(f"Issues: {result.issues}")
+            print(f"Suggestions: {result.suggestions}")
+
+Performance Considerations:
+- Efficient NLP operations
+- Model loading optimization
+- Memory management
+- Batch processing
+- Cache utilization
+- Error handling
+- Validation order
+
+Author: Keith Satuku
+Version: 2.0.0
+Created: 2025
+License: MIT
+"""
+
 from typing import Dict, List, Optional, Union, Any
 from dataclasses import dataclass
 import re
@@ -11,12 +84,15 @@ import spacy
 from bs4 import BeautifulSoup
 import validators
 from datetime import datetime
+
 class ValidationLevel(Enum):
+    """Validation level enumeration."""
     BASIC = "basic"
     STANDARD = "standard"
     STRICT = "strict"
 
 class ValidationCategory(Enum):
+    """Validation category enumeration."""
     CONTENT = "content"
     STRUCTURE = "structure"
     REFERENCES = "references"
@@ -25,7 +101,17 @@ class ValidationCategory(Enum):
 
 @dataclass
 class ValidationResult:
-    """Represents the result of content validation."""
+    """Represents the result of content validation.
+    
+    Attributes:
+        is_valid: Whether the content passed validation
+        category: Category of validation
+        level: Level of validation performed
+        score: Validation score (0.0 to 1.0)
+        issues: List of validation issues found
+        suggestions: List of improvement suggestions
+        metadata: Additional validation metadata
+    """
     is_valid: bool
     category: ValidationCategory
     level: ValidationLevel

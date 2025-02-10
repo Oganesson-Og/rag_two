@@ -1,3 +1,76 @@
+"""
+Document Store Connection Module
+----------------------------
+
+Abstract base class and implementations for document store connections.
+
+Key Features:
+- Multiple store support
+- Vector operations
+- CRUD operations
+- Search capabilities
+- Metadata management
+- Health checks
+- Index management
+
+Technical Details:
+- Abstract interfaces
+- Connection pooling
+- Query optimization
+- Vector operations
+- Index management
+- Error handling
+- Type validation
+
+Dependencies:
+- numpy>=1.24.0
+- typing-extensions>=4.7.0
+- datetime
+- logging
+
+Example Usage:
+    # Initialize connection
+    conn = PostgresDocStore(
+        host="localhost",
+        port=5432,
+        database="documents"
+    )
+    
+    # Search documents
+    results = conn.search(
+        match_expr=MatchTextExpr("content", "query"),
+        order_by=OrderByExpr("timestamp", ascending=False),
+        limit=10
+    )
+    
+    # Insert documents
+    doc_ids = conn.insert([{
+        "title": "Document",
+        "content": "Text content",
+        "metadata": {"type": "article"}
+    }])
+    
+    # Update documents
+    conn.update(doc_ids, {"status": "published"})
+    
+    # Delete documents
+    conn.delete(doc_ids)
+
+Performance Considerations:
+- Connection pooling
+- Query optimization
+- Batch operations
+- Index utilization
+- Cache management
+- Error handling
+- Type validation
+
+Author: Keith Satuku
+Version: 2.0.0
+Created: 2025
+License: MIT
+"""
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Union, Dict, Optional, Any, TypeVar, Generic

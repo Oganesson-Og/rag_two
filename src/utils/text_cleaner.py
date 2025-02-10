@@ -4,8 +4,44 @@ Text Cleaning Module
 
 Text cleaning and preprocessing utilities.
 
+Key Features:
+- Basic text cleaning
+- Special character removal
+- LaTeX cleaning
+- HTML cleaning
+- Whitespace normalization
+- Line break fixing
+- Unicode normalization
+
+Technical Details:
+- Regex-based cleaning
+- Unicode handling
+- Error handling
+- Configurable options
+- Logging integration
+
+Dependencies:
+- re
+- unicodedata
+- typing-extensions>=4.7.0
+
+Example Usage:
+    cleaner = TextCleaner()
+    
+    # Basic cleaning
+    clean_text = cleaner.clean_text("Some  messy    text!")
+    
+    # Remove special characters
+    clean_text = cleaner.remove_special_characters("Hello! @#$%", keep_chars="!")
+    
+    # Clean LaTeX
+    clean_text = cleaner.clean_latex("Text with $\alpha$ math")
+    
+    # Clean HTML
+    clean_text = cleaner.clean_html("<p>Some text</p>")
+
 Author: Keith Satuku
-Version: 1.0.0
+Version: 2.0.0
 Created: 2025
 License: MIT
 """
