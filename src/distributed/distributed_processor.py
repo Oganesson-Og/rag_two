@@ -1,3 +1,77 @@
+"""
+Distributed Processing Module
+--------------------------
+
+Distributed task processing system for managing parallel educational content
+processing across multiple worker nodes.
+
+Key Features:
+- Task distribution
+- Priority-based processing
+- Worker management
+- Task dependency handling
+- Resource monitoring
+- Error recovery
+- Load balancing
+- State persistence
+
+Technical Details:
+- Ray distributed framework
+- Priority queue system
+- Async processing
+- Worker pooling
+- Task scheduling
+- Resource tracking
+- Error handling
+- Performance monitoring
+
+Dependencies:
+- ray>=2.5.0
+- typing (standard library)
+- datetime (standard library)
+- logging (standard library)
+- pathlib (standard library)
+- queue (standard library)
+- threading (standard library)
+- dataclasses (standard library)
+- numpy>=1.24.0
+- enum (standard library)
+- asyncio>=3.4.3
+- json (standard library)
+
+Example Usage:
+    # Initialize processor
+    processor = DistributedProcessor(
+        num_workers=4,
+        config_path="config/distributed.json"
+    )
+    
+    # Submit task
+    task_id = await processor.submit_task(
+        content="Educational content",
+        task_type="embedding",
+        priority=ProcessingPriority.HIGH
+    )
+    
+    # Get result
+    result = await processor.get_result(task_id)
+
+Processing Features:
+- Priority scheduling
+- Task dependencies
+- Resource allocation
+- Worker monitoring
+- Error recovery
+- Result caching
+- Performance metrics
+- Load distribution
+
+Author: Keith Satuku
+Version: 1.0.0
+Created: 2025
+License: MIT
+"""
+
 from typing import Dict, List, Optional, Any, Callable
 import ray
 from datetime import datetime
@@ -13,6 +87,15 @@ import json
 import time
 
 class ProcessingPriority(Enum):
+    """
+    Task processing priority levels.
+    
+    Attributes:
+        LOW: Background processing
+        MEDIUM: Standard processing
+        HIGH: Priority processing
+        CRITICAL: Immediate processing
+    """
     LOW = 0
     MEDIUM = 1
     HIGH = 2
@@ -20,7 +103,19 @@ class ProcessingPriority(Enum):
 
 @dataclass
 class ProcessingTask:
-    """Represents a processing task in the distributed system."""
+    """
+    Represents a processing task in the distributed system.
+    
+    Attributes:
+        task_id (str): Unique task identifier
+        task_type (str): Type of processing task
+        content (Any): Content to process
+        priority (ProcessingPriority): Task priority level
+        metadata (Dict): Task metadata
+        created_at (datetime): Task creation timestamp
+        dependencies (List[str]): Required task dependencies
+        timeout (int): Task timeout in seconds
+    """
     task_id: str
     task_type: str
     content: Any
@@ -32,13 +127,34 @@ class ProcessingTask:
 
 @ray.remote
 class WorkerNode:
-    """Remote worker for distributed processing."""
+    """
+    Remote worker for distributed processing.
+    
+    Attributes:
+        worker_id (str): Unique worker identifier
+        processor_configs (Dict): Processor configurations
+        logger (logging.Logger): Logger instance
+        processors (Dict): Processing components
+        status (str): Worker status
+        current_task (ProcessingTask): Current processing task
+    
+    Methods:
+        process_task: Process assigned task
+        get_status: Get worker status
+    """
     
     def __init__(
         self,
         worker_id: str,
         processor_configs: Dict
     ):
+        """
+        Initialize worker node.
+        
+        Args:
+            worker_id: Worker identifier
+            processor_configs: Processor configurations
+        """
         self.worker_id = worker_id
         self.processor_configs = processor_configs
         self.logger = logging.getLogger(f"worker_{worker_id}")
@@ -56,7 +172,18 @@ class WorkerNode:
         }
         
     async def process_task(self, task: ProcessingTask) -> Dict:
-        """Process a single task."""
+        """
+        Process a single task.
+        
+        Args:
+            task: Task to process
+            
+        Returns:
+            Dictionary containing processing results
+            
+        Raises:
+            ValueError: If processor not found
+        """
         self.status = "processing"
         self.current_task = task
         
@@ -93,7 +220,12 @@ class WorkerNode:
             self.current_task = None
             
     def get_status(self) -> Dict:
-        """Get worker status."""
+        """
+        Get worker status.
+        
+        Returns:
+            Dictionary containing worker status information
+        """
         return {
             "worker_id": self.worker_id,
             "status": self.status,

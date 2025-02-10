@@ -1,3 +1,60 @@
+
+"""
+Multi-Modal Embedding Manager Module
+---------------------------------
+
+Comprehensive embedding generation system supporting text, image, and audio modalities.
+
+Key Features:
+- Multi-modal embedding generation
+- Text embeddings using MPNET
+- Image embeddings using ViT
+- Audio embeddings using Whisper
+- Batch processing support
+- Embedding combination utilities
+- Device-aware processing (CPU/GPU)
+
+Technical Details:
+- Uses transformer models for each modality
+- Handles various input formats
+- Normalized embedding outputs
+- Configurable model selection
+- Memory-efficient processing
+- Batch operation support
+
+Dependencies:
+- transformers>=4.30.0
+- torch>=2.0.0
+- numpy>=1.24.0
+- Pillow>=9.5.0
+- librosa>=0.10.0
+
+Example Usage:
+    # Initialize manager
+    manager = EmbeddingManager()
+    
+    # Generate embeddings for different modalities
+    text_emb = manager.get_text_embedding("sample text")
+    image_emb = manager.get_image_embedding(image_data)
+    audio_emb = manager.get_audio_embedding(audio_data)
+    
+    # Batch processing
+    batch_emb = manager.get_batch_embeddings(
+        texts=["text1", "text2"],
+        images=[img1, img2]
+    )
+
+Models Used:
+- Text: sentence-transformers/all-mpnet-base-v2
+- Image: google/vit-base-patch16-224
+- Audio: openai/whisper-base
+
+Author: Keith Satuku
+Version: 2.0.0
+Created: 2025
+License: MIT
+"""
+
 from typing import Optional, Union, List
 import numpy as np
 import io

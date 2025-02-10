@@ -1,3 +1,69 @@
+
+"""
+RAG Logger Module
+---------------
+
+Comprehensive logging system for educational RAG applications with structured
+logging and performance tracking.
+
+Key Features:
+- Structured logging
+- Performance tracking
+- Error handling
+- Debug support
+- Duration tracking
+- Metadata support
+- Log rotation
+
+Technical Details:
+- File handling
+- Log formatting
+- Context managers
+- Time tracking
+- Error capturing
+- Log levels
+- Metadata handling
+
+Dependencies:
+- logging (standard library)
+- json (standard library)
+- pathlib (standard library)
+- datetime (standard library)
+- contextlib (standard library)
+
+Example Usage:
+    # Initialize logger
+    logger = RagLogger(
+        config_manager=config_manager,
+        log_config=log_config
+    )
+    
+    # Log with metadata
+    logger.info(
+        "Processing query",
+        query_id="123",
+        user_id="user456"
+    )
+    
+    # Track operation duration
+    with logger.track_duration() as get_duration:
+        # Perform operation
+        process_documents()
+        logger.info(f"Duration: {get_duration():.2f}s")
+
+Log Levels:
+- DEBUG (detailed debugging)
+- INFO (general information)
+- WARNING (warning messages)
+- ERROR (error messages)
+
+Author: Keith Satuku
+Version: 2.0.0
+Created: 2025
+License: MIT
+"""
+
+
 import logging
 import json
 from pathlib import Path

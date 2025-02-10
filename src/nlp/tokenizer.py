@@ -2,7 +2,63 @@
 Unified Tokenizer Module
 ----------------------
 
-Advanced tokenization system with multiple features.
+Advanced tokenization system for educational content processing with comprehensive
+feature support and backwards compatibility.
+
+Key Features:
+- Multi-model tokenization (tiktoken, spacy)
+- Token type classification
+- POS tagging
+- Lemmatization
+- N-gram generation
+- Token filtering
+- Weight calculation
+- Text analysis
+
+Technical Details:
+- Token metadata tracking
+- Custom token types
+- Pattern matching
+- Weight normalization
+- Backwards compatibility
+- Performance optimization
+- Error handling
+
+Dependencies:
+- tiktoken>=0.5.0
+- spacy>=3.7.0
+- nltk>=3.8.0
+- typing (standard library)
+- re (standard library)
+- string (standard library)
+- math (standard library)
+
+Example Usage:
+    # Initialize tokenizer
+    tokenizer = UnifiedTokenizer()
+    
+    # Basic tokenization
+    tokens = tokenizer.tokenize("The quick brown fox jumps!")
+    
+    # Filter tokens
+    filtered = tokenizer.filter_tokens(
+        tokens,
+        token_types={TokenType.WORD},
+        exclude_stops=True
+    )
+    
+    # Generate n-grams
+    bigrams = tokenizer.get_ngrams(tokens, n=2)
+    
+    # Analyze text
+    analysis = tokenizer.analyze_text("Sample text for analysis")
+
+Token Types:
+- WORD: Regular words
+- NUMBER: Numeric values
+- PUNCTUATION: Punctuation marks
+- SPECIAL: Special characters
+- WHITESPACE: Space characters
 
 Author: Keith Satuku
 Version: 1.0.0

@@ -1,5 +1,3 @@
-from typing import Dict
-
 """
 Embedding Configuration Module
 ---------------------------
@@ -57,6 +55,9 @@ Version: 2.0.0
 Created: 2025
 License: MIT
 """
+
+
+from typing import Dict
 
 EMBEDDING_MODELS = {
     'minilm': {

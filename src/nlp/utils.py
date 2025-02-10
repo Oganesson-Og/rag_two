@@ -1,3 +1,58 @@
+"""
+NLP Utilities Module
+-----------------
+
+Core utility functions for NLP operations in the RAG pipeline.
+
+Key Features:
+- Path management
+- Language detection
+- Text tokenization
+- String handling
+- Error handling
+- Performance tracking
+- Resource management
+
+Technical Details:
+- Path resolution
+- Character detection
+- Token processing
+- String operations
+- Error validation
+- Resource cleanup
+- Performance optimization
+
+Dependencies:
+- nltk>=3.8.0
+- typing (standard library)
+- os (standard library)
+- re (standard library)
+
+Example Usage:
+    # Get project base directory
+    base_dir = get_project_base_directory()
+    
+    # Check Chinese characters
+    is_cn = is_chinese("你好")
+    
+    # Tokenize text
+    tokens = word_tokenize(
+        text="Hello, world!",
+        language="english",
+        preserve_line=True
+    )
+
+Language Support:
+- English
+- Chinese
+- Multi-language
+
+Author: Keith Satuku
+Version: 1.0.0
+Created: 2025
+License: MIT
+"""
+
 def get_project_base_directory():
     """Returns the base directory of the project"""
     import os

@@ -1,3 +1,72 @@
+"""
+RAG Orchestration Module
+----------------------
+
+Core orchestration system for managing the educational RAG pipeline,
+coordinating components, and handling document processing and queries.
+
+Key Features:
+- Document processing pipeline
+- Query processing workflow
+- Component coordination
+- Error handling
+- Feedback processing
+- Standards alignment
+- Cross-modal processing
+- Distributed operations
+
+Technical Details:
+- Async processing
+- Pipeline management
+- Component integration
+- Error recovery
+- State management
+- Performance monitoring
+- Resource optimization
+- Quality validation
+
+Dependencies:
+- asyncio>=3.4.3
+- logging (standard library)
+- pathlib (standard library)
+- typing (standard library)
+- datetime (standard library)
+
+Example Usage:
+    # Initialize orchestrator
+    orchestrator = RAGOrchestrator(
+        config_path="config/rag_config.yaml",
+        base_path="data"
+    )
+    
+    # Process document
+    result = await orchestrator.process_document(
+        document_path="physics_lecture.pdf",
+        metadata={"subject": "physics"}
+    )
+    
+    # Query content
+    response = await orchestrator.query(
+        query="Explain quantum entanglement",
+        user_context={"level": "advanced"}
+    )
+
+Pipeline Features:
+- Document validation
+- Content processing
+- Mathematical handling
+- Content chunking
+- Cross-modal analysis
+- Vector indexing
+- Standards mapping
+- Feedback collection
+
+Author: Keith Satuku
+Version: 1.0.0
+Created: 2025
+License: MIT
+"""
+
 from typing import Dict, List, Optional, Union, Any
 from pathlib import Path
 import logging
@@ -17,13 +86,41 @@ from ..nlp.cross_modal_processor import CrossModalProcessor
 from ..distributed.distributed_processor import DistributedProcessor
 
 class RAGOrchestrator:
-    """Main orchestrator for the educational RAG system."""
+    """
+    Main orchestrator for the educational RAG system.
+    
+    Attributes:
+        base_path (Path): Base directory for data storage
+        logger (logging.Logger): Logger instance
+        error_manager (ErrorManager): Error handling component
+        chunker (EducationalChunker): Content chunking component
+        math_processor (MathContentProcessor): Math content handler
+        vector_index (EducationalVectorIndex): Vector storage component
+        retriever (EducationalRetriever): Content retrieval component
+        validator (ContentValidator): Content validation component
+        standards_manager (StandardsManager): Educational standards component
+        feedback_processor (FeedbackProcessor): Feedback handling component
+        cross_modal_processor (CrossModalProcessor): Multi-modal processor
+        distributed_processor (DistributedProcessor): Distributed operations
+    
+    Methods:
+        process_document: Process educational documents
+        query: Handle educational queries
+        get_system_status: Get component status
+    """
     
     def __init__(
         self,
         config_path: Optional[Path] = None,
         base_path: Optional[Path] = None
     ):
+        """
+        Initialize RAG orchestrator with components.
+        
+        Args:
+            config_path: Path to configuration file
+            base_path: Base directory for data storage
+        """
         self.logger = logging.getLogger(__name__)
         self.base_path = base_path or Path("data")
         
@@ -53,7 +150,19 @@ class RAGOrchestrator:
         document_path: Union[str, Path],
         metadata: Optional[Dict] = None
     ) -> Dict[str, Any]:
-        """Process a new educational document."""
+        """
+        Process a new educational document through the pipeline.
+        
+        Args:
+            document_path: Path to document
+            metadata: Optional document metadata
+            
+        Returns:
+            Dictionary containing processing results
+            
+        Raises:
+            ValueError: If document validation fails
+        """
         try:
             # 1. Initial document processing
             content = await self._load_document(document_path)
@@ -99,7 +208,20 @@ class RAGOrchestrator:
         user_context: Optional[Dict] = None,
         filters: Optional[Dict] = None
     ) -> Dict[str, Any]:
-        """Process an educational query."""
+        """
+        Process an educational query through the pipeline.
+        
+        Args:
+            query: User query string
+            user_context: Optional user context
+            filters: Optional query filters
+            
+        Returns:
+            Dictionary containing query results
+            
+        Raises:
+            Exception: If query processing fails
+        """
         try:
             # 1. Process query
             processed_query = await self.cross_modal_processor.process_multimodal_query(query)
@@ -177,7 +299,12 @@ class RAGOrchestrator:
         pass
 
     def get_system_status(self) -> Dict[str, Any]:
-        """Get status of all system components."""
+        """
+        Get status of all system components.
+        
+        Returns:
+            Dictionary containing component status information
+        """
         return {
             "vector_index": self.vector_index.get_stats(),
             "retriever": self.retriever.get_retrieval_stats(),

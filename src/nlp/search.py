@@ -2,7 +2,57 @@
 Search Module
 -----------
 
-Search functionality for the RAG pipeline.
+Advanced search functionality for the RAG pipeline with comprehensive 
+ranking and analysis capabilities.
+
+Key Features:
+- Vector search
+- Hybrid ranking
+- Context awareness
+- Metadata filtering
+- Result reranking
+- Score normalization
+- Performance analysis
+
+Technical Details:
+- Embedding handling
+- Similarity calculation
+- Score aggregation
+- Filter processing
+- Query enhancement
+- Result caching
+- Error handling
+
+Dependencies:
+- numpy>=1.24.0
+- typing (standard library)
+- logging (standard library)
+- re (standard library)
+
+Example Usage:
+    # Initialize engine
+    engine = SearchEngine()
+    
+    # Perform search with reranking
+    results = engine.search(
+        query_vec=query_embeddings,
+        doc_vecs=document_embeddings,
+        docs=documents,
+        rerank_params={
+            'page_position': 0.1,
+            'metadata': 0.15
+        }
+    )
+    
+    # Analyze results
+    analysis = engine.analyze_results(results)
+
+Search Parameters:
+- Vector similarity
+- Token matching
+- Page position
+- Metadata matching
+- Context relevance
 
 Author: Keith Satuku
 Version: 1.0.0
@@ -18,13 +68,14 @@ from typing import List, Dict, Optional, Union, Tuple, TypedDict, Any
 from .tokenizer import default_tokenizer as rag_tokenizer
 from .query import default_query_processor as query
 import numpy as np
-from ..utils.text_cleaner import TextCleaner
-from ..utils.doc_store_conn import DocStoreConnection, MatchDenseExpr, FusionExpr, OrderByExpr
+from src.utils.text_cleaner import TextCleaner
+from src.utils.doc_store_conn import DocStoreConnection, MatchDenseExpr, FusionExpr, OrderByExpr
 from src.rag.utils import rmSpace
 
 PAGERANK_FLD = "pagerank_fea"
 TAG_FLD = "tag_feas"
 def index_name(uid): return f"ragflow_{uid}"
+
 
 
 class Dealer:

@@ -1,35 +1,34 @@
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordBearer
-from typing import List, Dict, Optional
+"""
+This file is the main entry point for the API.
+It is used to start the API and handle requests.
+"""
 
-app = FastAPI(title="RAG API", version="1.0.0")
+# ... existing code ...
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+# RAG-specific router
+
+rag_router = APIRouter(
+    
+    prefix="/rag",
+    tags=["RAG"]
 )
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
-
-@app.post("/documents/upload")
-async def upload_document(file: UploadFile = File(...), token: str = Depends(oauth2_scheme)):
+@rag_router.post("/documents/upload")
+async def upload_document(file: UploadFile = File(...)):
+    # Handle document upload to Qdrant
     return {"document_id": "test-id"}
 
-@app.get("/documents/{doc_id}/status")
-async def get_document_status(doc_id: str, token: str = Depends(oauth2_scheme)):
+@rag_router.get("/documents/{doc_id}/status")
+async def get_document_status(doc_id: str):
+    # Check document processing status
     return {"status": "completed"}
 
-@app.post("/search")
-async def search(query: Dict, token: str = Depends(oauth2_scheme)):
+@rag_router.post("/search")
+async def search(query: Dict):
+    # Perform RAG search using Qdrant
     return {"results": []}
 
-# Add other endpoints as needed 
+# Include the RAG router in your main app
+app.include_router(rag_router)
+
+# ... existing code ...

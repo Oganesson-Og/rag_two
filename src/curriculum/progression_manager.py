@@ -1,3 +1,71 @@
+"""
+Curriculum Progression Management Module
+------------------------------------
+
+Comprehensive system for managing educational progression paths and tracking
+student advancement through curriculum topics.
+
+Key Features:
+- Topic dependency management
+- Learning path generation
+- Progress tracking
+- Difficulty assessment
+- Subject area organization
+- Prerequisites validation
+- Achievement monitoring
+- Resource management
+
+Technical Details:
+- Graph-based progression
+- JSON configuration
+- Progress persistence
+- Metadata handling
+- Path optimization
+- Validation rules
+- Resource tracking
+- Performance metrics
+
+Dependencies:
+- typing (standard library)
+- datetime (standard library)
+- json (standard library)
+- pathlib (standard library)
+- dataclasses (standard library)
+- enum (standard library)
+
+Example Usage:
+    # Initialize manager
+    manager = CurriculumProgressionManager("curriculum.json")
+    
+    # Get next topics
+    next_topics = manager.get_next_topics(
+        user_id="student_123",
+        completed_topics=["algebra_1", "geometry_1"]
+    )
+    
+    # Update progress
+    manager.update_progress(
+        user_id="student_123",
+        topic_id="algebra_2",
+        status="completed",
+        assessment_score=0.85
+    )
+
+Progression Features:
+- Topic sequencing
+- Prerequisite checking
+- Progress reporting
+- Path customization
+- Resource suggestions
+- Performance tracking
+- Difficulty scaling
+
+Author: Keith Satuku
+Version: 1.0.0
+Created: 2025
+License: MIT
+"""
+
 from typing import Dict, List, Optional, Union
 from datetime import datetime
 import json
@@ -6,11 +74,28 @@ from dataclasses import dataclass
 from enum import Enum
 
 class DifficultyLevel(Enum):
+    """
+    Educational content difficulty levels.
+    
+    Attributes:
+        BEGINNER: Entry-level content
+        INTERMEDIATE: Mid-level content
+        ADVANCED: Advanced-level content
+    """
     BEGINNER = "beginner"
     INTERMEDIATE = "intermediate"
     ADVANCED = "advanced"
 
 class SubjectArea(Enum):
+    """
+    Academic subject areas.
+    
+    Attributes:
+        MATHEMATICS: Math-related topics
+        SCIENCE: Science-related topics
+        LANGUAGE: Language-related topics
+        SOCIAL_STUDIES: Social studies topics
+    """
     MATHEMATICS = "mathematics"
     SCIENCE = "science"
     LANGUAGE = "language"
@@ -18,6 +103,19 @@ class SubjectArea(Enum):
 
 @dataclass
 class TopicNode:
+    """
+    Educational topic node with metadata.
+    
+    Attributes:
+        id (str): Unique topic identifier
+        name (str): Topic name/title
+        prerequisites (List[str]): Required prerequisite topics
+        difficulty (DifficultyLevel): Topic difficulty level
+        subject (SubjectArea): Academic subject area
+        learning_objectives (List[str]): Learning goals
+        estimated_duration (int): Estimated completion time
+        resources (List[Dict]): Learning resources
+    """
     id: str
     name: str
     prerequisites: List[str]
@@ -28,7 +126,29 @@ class TopicNode:
     resources: List[Dict]
 
 class CurriculumProgressionManager:
+    """
+    Manager for educational progression and topic sequencing.
+    
+    Attributes:
+        curriculum_graph (Dict[str, TopicNode]): Topic dependency graph
+        learning_paths (Dict[str, List[str]]): Predefined learning paths
+        progress_tracking (Dict[str, Dict]): User progress data
+    
+    Methods:
+        load_curriculum: Load curriculum from JSON
+        get_next_topics: Get available next topics
+        update_progress: Update user progress
+        get_learning_path: Generate learning path
+        get_progress_report: Generate progress report
+    """
+    
     def __init__(self, curriculum_path: Optional[Path] = None):
+        """
+        Initialize progression manager.
+        
+        Args:
+            curriculum_path: Optional path to curriculum JSON
+        """
         self.curriculum_graph: Dict[str, TopicNode] = {}
         self.learning_paths: Dict[str, List[str]] = {}
         self.progress_tracking: Dict[str, Dict] = {}
@@ -37,7 +157,15 @@ class CurriculumProgressionManager:
             self.load_curriculum(curriculum_path)
 
     def load_curriculum(self, path: Path) -> None:
-        """Load curriculum structure from JSON file."""
+        """
+        Load curriculum structure from JSON file.
+        
+        Args:
+            path: Path to curriculum JSON file
+            
+        Raises:
+            ValueError: If curriculum loading fails
+        """
         try:
             with open(path, 'r') as f:
                 data = json.load(f)
@@ -60,7 +188,16 @@ class CurriculumProgressionManager:
             raise ValueError(f"Failed to load curriculum: {str(e)}")
 
     def get_next_topics(self, user_id: str, completed_topics: List[str]) -> List[TopicNode]:
-        """Get next available topics based on prerequisites."""
+        """
+        Get next available topics based on prerequisites.
+        
+        Args:
+            user_id: User identifier
+            completed_topics: List of completed topic IDs
+            
+        Returns:
+            List of available topic nodes
+        """
         available_topics = []
         
         for topic_id, topic in self.curriculum_graph.items():
@@ -81,7 +218,15 @@ class CurriculumProgressionManager:
         status: str,
         assessment_score: Optional[float] = None
     ) -> None:
-        """Update user's progress for a specific topic."""
+        """
+        Update user's progress for a specific topic.
+        
+        Args:
+            user_id: User identifier
+            topic_id: Topic identifier
+            status: Progress status
+            assessment_score: Optional assessment score
+        """
         if user_id not in self.progress_tracking:
             self.progress_tracking[user_id] = {}
             
@@ -97,7 +242,17 @@ class CurriculumProgressionManager:
         subject: SubjectArea,
         difficulty: DifficultyLevel
     ) -> List[TopicNode]:
-        """Generate personalized learning path."""
+        """
+        Generate personalized learning path.
+        
+        Args:
+            user_id: User identifier
+            subject: Subject area
+            difficulty: Difficulty level
+            
+        Returns:
+            List of topic nodes in recommended order
+        """
         completed_topics = set(
             topic_id 
             for topic_id, data in self.progress_tracking.get(user_id, {}).items()
@@ -122,7 +277,15 @@ class CurriculumProgressionManager:
         return sorted_topics
 
     def get_progress_report(self, user_id: str) -> Dict:
-        """Generate comprehensive progress report."""
+        """
+        Generate comprehensive progress report.
+        
+        Args:
+            user_id: User identifier
+            
+        Returns:
+            Dictionary containing progress statistics
+        """
         if user_id not in self.progress_tracking:
             return {"error": "User not found"}
             

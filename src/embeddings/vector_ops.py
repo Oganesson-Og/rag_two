@@ -1,3 +1,60 @@
+"""
+Vector Operations Module
+----------------------
+
+Comprehensive vector manipulation and analysis utilities for embedding operations.
+
+Key Features:
+- Similarity calculations
+- Vector normalization
+- Top-K retrieval
+- Vector aggregation
+- Clustering operations
+- Dimensionality reduction
+- Batch processing support
+
+Technical Details:
+- Multiple similarity metrics
+- Efficient batch operations
+- Numpy-optimized calculations
+- Clustering algorithms
+- PCA implementation
+- Weighted aggregations
+
+Dependencies:
+- numpy>=1.24.0
+- scikit-learn>=1.2.0
+- scipy>=1.10.0
+
+Example Usage:
+    # Initialize operations
+    ops = VectorOperations(config_manager)
+    
+    # Calculate similarities
+    similarity = ops.cosine_similarity(vector1, vector2)
+    
+    # Find top-K similar vectors
+    indices, scores = ops.top_k_similar(query, vectors, k=5)
+    
+    # Cluster vectors
+    clusters = ops.cluster_vectors(vectors, n_clusters=3)
+
+Supported Operations:
+- Cosine similarity
+- Euclidean distance
+- Dot product
+- Vector normalization
+- K-means clustering
+- PCA reduction
+- Weighted aggregation
+
+Author: Keith Satuku
+Version: 2.0.0
+Created: 2025
+License: MIT
+"""
+
+
 import numpy as np
 from enum import Enum
 from typing import List, Tuple, Optional

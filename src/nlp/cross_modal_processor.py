@@ -3,6 +3,56 @@ Cross-Modal Processing Module
 -------------------------
 
 Enhanced cross-modal reasoning system for educational content processing.
+
+Key Features:
+- Multi-modal processing
+- Text analysis
+- Image processing
+- Audio handling
+- Embedding fusion
+- Confidence scoring
+- Async operations
+
+Technical Details:
+- Model management
+- Tensor operations
+- Embedding generation
+- Score calculation
+- Error handling
+- Resource cleanup
+- Performance tracking
+
+Dependencies:
+- torch>=2.0.0
+- transformers>=4.30.0
+- PIL>=9.0.0
+- numpy>=1.24.0
+- librosa>=0.10.0
+
+Example Usage:
+    # Initialize processor
+    processor = CrossModalProcessor()
+    
+    # Process multi-modal query
+    result = await processor.process_multimodal_query(
+        text="Explain this diagram",
+        image="diagram.jpg",
+        audio="explanation.wav"
+    )
+    
+    # Access results
+    embeddings = result["embeddings"]
+    confidence = result["confidence"]
+
+Supported Models:
+- Text: sentence-transformers/all-mpnet-base-v2
+- Vision: openai/clip-vit-base-patch32
+- Audio: openai/whisper-base
+
+Author: Keith Satuku
+Version: 2.0.0
+Created: 2025
+License: MIT
 """
 
 from typing import Dict, List, Optional, Union, Any

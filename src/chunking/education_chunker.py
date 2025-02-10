@@ -1,3 +1,74 @@
+"""
+Educational Content Chunking Module
+--------------------------------
+
+Intelligent chunking system optimized for educational content with semantic
+understanding and educational context preservation.
+
+Key Features:
+- Educational content-aware chunking
+- Semantic boundary detection
+- Metadata preservation
+- Multi-format support
+- Content type classification
+- Difficulty assessment
+- Learning objective extraction
+- Prerequisites identification
+
+Technical Details:
+- Transformer-based embeddings
+- Custom chunking algorithms
+- Educational pattern recognition
+- Content structure analysis
+- Semantic coherence checks
+- Cross-reference handling
+- Metadata enrichment
+- Quality validation
+
+Dependencies:
+- transformers>=4.35.0
+- torch>=2.0.0
+- numpy>=1.24.0
+- bs4>=0.0.1
+- PyMuPDF>=1.23.0
+- nltk>=3.8.1
+- spacy>=3.7.2
+- logging (standard library)
+
+Example Usage:
+    # Basic chunking
+    chunker = EducationalChunker()
+    chunks = chunker.chunk_educational_content(
+        content="Long educational text...",
+        content_type="text"
+    )
+    
+    # Advanced chunking with metadata
+    chunks = chunker.chunk_educational_content(
+        content=pdf_bytes,
+        content_type="pdf",
+        metadata={
+            "subject": "physics",
+            "level": "advanced",
+            "topic": "quantum_mechanics"
+        }
+    )
+
+Chunking Features:
+- Definition detection
+- Example identification
+- Exercise separation
+- Concept grouping
+- Theorem preservation
+- Proof handling
+- Content classification
+
+Author: Keith Satuku
+Version: 1.0.0
+Created: 2025
+License: MIT
+"""
+
 from typing import List, Dict, Optional, Union
 import re
 from dataclasses import dataclass
@@ -10,7 +81,20 @@ import logging
 
 @dataclass
 class EducationalChunk:
-    """Represents an educational content chunk with metadata."""
+    """
+    Represents an educational content chunk with metadata.
+    
+    Attributes:
+        content (str): Chunk text content
+        chunk_type (str): Type of content (definition, example, etc.)
+        subject_area (str): Academic subject area
+        difficulty_level (float): Content difficulty (0.0 to 1.0)
+        prerequisites (List[str]): Required prior knowledge
+        learning_objectives (List[str]): Learning goals
+        metadata (Dict): Additional chunk metadata
+        start_idx (int): Starting position in source
+        end_idx (int): Ending position in source
+    """
     content: str
     chunk_type: str  # e.g., 'definition', 'example', 'exercise', 'concept'
     subject_area: str
@@ -22,7 +106,25 @@ class EducationalChunk:
     end_idx: int
 
 class EducationalChunker:
-    """Intelligent chunking system optimized for educational content."""
+    """
+    Intelligent chunking system optimized for educational content.
+    
+    Attributes:
+        tokenizer: Transformer tokenizer
+        model: Transformer model
+        max_chunk_size: Maximum chunk size
+        min_chunk_size: Minimum chunk size
+        overlap_size: Overlap between chunks
+        device: Processing device
+        section_markers: Educational content markers
+        logger: Logging instance
+    
+    Methods:
+        chunk_educational_content: Main chunking method
+        _semantic_segmentation: Content segmentation
+        _create_semantic_chunks: Create chunks with context
+        _post_process_chunks: Validate and refine chunks
+    """
     
     def __init__(
         self,
@@ -32,6 +134,16 @@ class EducationalChunker:
         overlap_size: int = 50,
         device: str = "cuda" if torch.cuda.is_available() else "cpu"
     ):
+        """
+        Initialize educational content chunker.
+        
+        Args:
+            model_name: Transformer model for embeddings
+            max_chunk_size: Maximum tokens per chunk
+            min_chunk_size: Minimum tokens per chunk
+            overlap_size: Overlap tokens between chunks
+            device: Processing device (CPU/CUDA)
+        """
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModel.from_pretrained(model_name).to(device)
         self.max_chunk_size = max_chunk_size
@@ -57,7 +169,20 @@ class EducationalChunker:
         content_type: str,
         metadata: Optional[Dict] = None
     ) -> List[EducationalChunk]:
-        """Main chunking method for educational content."""
+        """
+        Main chunking method for educational content.
+        
+        Args:
+            content: Text or binary content to chunk
+            content_type: Content format (text, pdf, etc.)
+            metadata: Optional content metadata
+            
+        Returns:
+            List of EducationalChunk objects
+            
+        Raises:
+            ValueError: If content type is unsupported
+        """
         if isinstance(content, bytes):
             if content_type == 'pdf':
                 processed_content = self._process_pdf(content)

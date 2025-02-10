@@ -1,5 +1,3 @@
-from typing import Dict
-
 """
 Educational Domain Configuration Module
 -----------------------------------
@@ -14,6 +12,8 @@ Features:
 Author: Keith Satuku
 Created: 2024
 """
+
+from typing import Dict
 
 EDUCATION_DOMAINS = {
     'science': {

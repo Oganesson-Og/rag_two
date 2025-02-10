@@ -1,0 +1,170 @@
+# .cursorrules
+# 
+# Place this file in the root of your project to define project-specific rules
+# for Cursor AI. Below is a sample structure combining the consolidated RAG 
+# workflow roadmap with typical code quality and consistency rules.
+#
+# You can rename or reorganize rule names, descriptions, triggers, and actions 
+# to suit your workflow.
+
+version: 1
+
+rules:
+
+  ########################################################################
+  # 1. UNIFIED DATA MODEL DEVELOPMENT
+  ########################################################################
+  - name: "Enforce Data Model Standards"
+    description: >
+      Ensures that the data model (Document, Chunk, Embedding, 
+      TranscriptionResult) is created and maintained in src/rag/models.py
+      with standardized fields and docstrings.
+    triggers:
+      - "When generating or modifying classes in src/rag/models.py"
+    actions:
+      - "Create or update classes (Document, Chunk, Embedding, TranscriptionResult) with required fields:
+         metadata, content, modality, embeddings, processingHistory (or similar)."
+      - "Use clear docstrings (Google or NumPy style) to explain each field."
+      - "Include type hints for all class attributes."
+      - "Ensure the file is located at src/rag/models.py."
+
+  ########################################################################
+  # 2. CENTRAL PIPELINE ORCHESTRATION
+  ########################################################################
+  - name: "Create or Update Central RAG Pipeline"
+    description: >
+      A Pipeline class in src/rag/pipeline.py, orchestrating extraction,
+      preprocessing, audio processing, retrieval, generation, and post-processing.
+    triggers:
+      - "When user requests creation or modification of pipeline or new pipeline stages."
+    actions:
+      - "Create/maintain a Pipeline class in src/rag/pipeline.py."
+      - "Include configurable steps: extraction, chunking, audio processing, prompt engineering, retrieval, generation."
+      - "Incorporate logging, error handling, and checkpointing mechanisms."
+      - "Use docstrings and type hints for all pipeline methods."
+
+  ########################################################################
+  # 3. AUDIO PROCESSING INTEGRATION
+  ########################################################################
+  - name: "Audio Extractor & Transcription"
+    description: >
+      Guide the AI to create or maintain an audio extractor in 
+      src/document_processing/extractors/audio.py that handles 
+      speech-to-text transcription and updates the data model.
+    triggers:
+      - "When generating code related to audio file ingestion or transcription."
+    actions:
+      - "Place audio extraction code in src/document_processing/extractors/audio.py."
+      - "Use a recognized speech-to-text engine (e.g., OpenAI Whisper, SpeechRecognition, etc.)."
+      - "Store transcription results in the TranscriptionResult class; 
+         integrate the text into Document objects for further processing."
+      - "Support caching strategies for raw audio and transcribed text."
+
+  ########################################################################
+  # 4. PROMPT ENGINEERING MODULE
+  ########################################################################
+  - name: "Prompt Engineering Conventions"
+    description: >
+      A module in src/rag/prompt_engineering.py that standardizes prompt 
+      templates and integrates them into the pipeline before retrieval and generation.
+    triggers:
+      - "When user requests prompt or message generation logic."
+    actions:
+      - "Create or update src/rag/prompt_engineering.py with a library of prompt templates."
+      - "Include subject-specific context (e.g., educational, domain-specific) 
+         in the prompt generation as needed."
+      - "Ensure the module exposes functions or classes that can be 
+         easily integrated into the pipeline (pre-retrieval or pre-generation)."
+
+  ########################################################################
+  # 5. CROSS-MODAL CONSISTENCY AND CONFIGURATION
+  ########################################################################
+  - name: "Unified Configuration and Caching"
+    description: >
+      Enforce consistent configuration across modules (text, audio, etc.) 
+      and ensure caching is properly handled in advanced and vector caches.
+    triggers:
+      - "When user modifies caching or config logic in src/config or other config modules."
+    actions:
+      - "Use consistent keying and referencing for Documents, audio transcripts, and embeddings."
+      - "Maintain backward compatibility with existing caching approaches."
+      - "Update or create integration tests to confirm that changes in one stage 
+         do not break other parts of the pipeline."
+
+  ########################################################################
+  # 6. OPTIONAL ENHANCEMENTS AND DOCUMENTATION
+  ########################################################################
+  - name: "Documentation and Testing Standards"
+    description: >
+      Ensure that all new code contains updated documentation, docstrings, and tests.
+    triggers:
+      - "When user generates or updates new modules, classes, or methods."
+    actions:
+      - "Automatically add or prompt for docstrings (Google or NumPy style)."
+      - "Include unit tests and/or integration tests in a tests/ folder 
+         (mirroring the module structure)."
+      - "Check for backward compatibility and mention possible migration steps 
+         in docstrings or README updates."
+
+  ########################################################################
+  # 7. CODE STYLE, NAMING, AND ORGANIZATIONAL CONVENTIONS
+  ########################################################################
+  - name: "Code Formatting & Naming Conventions"
+    description: >
+      Guides Cursor AI to follow PEP 8 (Python) and consistent naming 
+      conventions (e.g., PascalCase for classes, snake_case for methods).
+    triggers:
+      - "When user prompts for Python code generation, refactoring, or new modules."
+    actions:
+      - "Apply autoformatting (PEP 8) to all Python code suggestions, 
+         including imports, function definitions, and whitespace usage."
+      - "Use PascalCase for class names and snake_case for functions and methods."
+      - "Encourage short, descriptive variable names; avoid single-letter variables 
+         except in well-known loops (e.g., `i`, `j`)."
+
+  ########################################################################
+  # 8. FOLDER STRUCTURE & PROJECT ORGANIZATION
+  ########################################################################
+  - name: "Enforce Project Architecture"
+    description: >
+      Keeps code aligned with the recommended folder structure from the 
+      consolidated RAG roadmap.
+    triggers:
+      - "When user requests new modules, classes, or file generation."
+    actions:
+      - "Place new RAG-related modules under src/rag or src/document_processing (per the roadmap)."
+      - "All test files should be placed under tests/ in a mirrored folder structure 
+         (e.g., tests/rag/test_pipeline.py for src/rag/pipeline.py)."
+      - "Suggest file-level docstrings, especially when creating new modules, 
+         to describe purpose and usage."
+
+  ########################################################################
+  # 9. DATABASE & MISCELLANEOUS RULES (OPTIONAL)
+  ########################################################################
+  - name: "Database Access Conventions"
+    description: >
+      If the project interacts with a database for caching or metadata storage,
+      ensure consistent usage of database utility modules and security best practices.
+    triggers:
+      - "When user requests SQL queries or updates to DB interaction."
+    actions:
+      - "Write all database queries via designated DB utility functions 
+         (e.g., src/utils/db.py)."
+      - "Automatically add placeholders or parameterized queries to prevent SQL injection."
+      - "Include docstrings describing the query’s purpose, expected parameters, 
+         and return format."
+
+  ########################################################################
+  # 10. CODE COMMENTING STANDARDS
+  ########################################################################
+  - name: "Commenting & TODO Guidelines"
+    description: >
+      Encourages consistent commenting standards and automatic TODOs 
+      where functionality is incomplete.
+    triggers:
+      - "When user generates a new function or leaves functionality unimplemented."
+    actions:
+      - "Insert a TODO comment or docstring section for any unimplemented methods."
+      - "Encourage one-line or multi-line comments to explain non-obvious logic."
+      - "Maintain consistent style for docstrings and code comments (Google, NumPy, or reST)."
+

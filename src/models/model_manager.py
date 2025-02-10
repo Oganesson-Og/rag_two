@@ -1,7 +1,72 @@
 """
 Model Manager Module
 -----------------
-Handles model selection, loading, and fallback mechanisms.
+
+Comprehensive model management system for handling model selection, loading,
+and fallback mechanisms in educational RAG applications.
+
+Key Features:
+- Model selection
+- Automatic loading
+- Fallback handling
+- Cache management
+- Domain adaptation
+- Resource optimization
+- Error recovery
+
+Technical Details:
+- Model caching
+- Memory management
+- Lazy loading
+- GPU optimization
+- Error handling
+- Version control
+- Resource cleanup
+
+Dependencies:
+- torch>=2.0.0
+- transformers>=4.30.0
+- sentence-transformers>=2.2.0
+- whisper>=1.0.0
+- typing (standard library)
+- pathlib (standard library)
+- logging (standard library)
+
+Example Usage:
+    # Initialize manager
+    manager = ModelManager(cache_dir=Path(".cache/models"))
+    
+    # Get model for specific task and domain
+    model = manager.get_model(
+        task="embedding",
+        domain="science",
+        fallback="instructor-base"
+    )
+    
+    # Use model
+    embeddings = model.encode("Sample text")
+    
+    # Cleanup
+    manager.cleanup()
+
+Supported Tasks:
+- Embedding Generation
+- Text Classification
+- Speech Transcription
+- Language Understanding
+- Content Generation
+
+Domain Support:
+- Science
+- Mathematics
+- History
+- General Education
+- Cross-Domain
+
+Author: Keith Satuku
+Version: 2.0.0
+Created: 2025
+License: MIT
 """
 
 from typing import Dict, Optional, Any

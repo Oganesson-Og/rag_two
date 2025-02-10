@@ -1,3 +1,68 @@
+"""
+Environment Management Module
+--------------------------
+
+System environment management and resource control for the educational
+RAG system.
+
+Key Features:
+- Environment setup and validation
+- Resource limit management
+- Directory structure handling
+- Environment variable control
+- State persistence
+- Cleanup operations
+- Lock management
+- Resource monitoring
+
+Technical Details:
+- Path-based operations
+- Resource tracking
+- State serialization
+- Lock mechanisms
+- Environment isolation
+- Resource optimization
+- Error handling
+
+Dependencies:
+- os (standard library)
+- json (standard library)
+- shutil (standard library)
+- pathlib (standard library)
+- contextlib (standard library)
+- typing (standard library)
+
+Example Usage:
+    # Initialize environment
+    env_manager = EnvironmentManager()
+    env_manager.setup_environment(Path("./rag_system"))
+    
+    # Validate and monitor
+    env_manager.validate_environment(
+        required_dirs=['vectors', 'cache'],
+        required_vars=['RAG_API_KEY']
+    )
+    
+    # Resource management
+    with env_manager.environment_lock(Path("./lock")):
+        env_manager.set_resource_limits({'max_cache_size': 1000000})
+        usage = env_manager.get_resource_usage()
+
+Environment Features:
+- Directory management
+- Resource monitoring
+- State persistence
+- Lock mechanisms
+- Cleanup operations
+- Variable handling
+- Limit enforcement
+
+Author: Keith Satuku
+Version: 1.0.0
+Created: 2025
+License: MIT
+"""
+
 import os
 import json
 import shutil
@@ -6,10 +71,32 @@ from contextlib import contextmanager
 from typing import List, Dict, Any
 
 class EnvironmentManager:
+    """
+    System environment and resource manager.
+    
+    Attributes:
+        resource_limits (Dict): Resource usage limits
+    
+    Methods:
+        setup_environment: Initialize system directories
+        validate_environment: Check required resources
+        cleanup_environment: Clean system resources
+        set_resource_limits: Set usage limits
+        get_resource_usage: Monitor resource usage
+    """
+    
     def __init__(self):
+        """Initialize environment manager."""
         self.resource_limits = {}
         
     def setup_environment(self, root_dir: Path, create_dirs: bool = True):
+        """
+        Set up system environment structure.
+        
+        Args:
+            root_dir: Root directory path
+            create_dirs: Whether to create missing directories
+        """
         required_dirs = ['vectors', 'documents', 'cache', 'logs']
         for dir_name in required_dirs:
             dir_path = root_dir / dir_name

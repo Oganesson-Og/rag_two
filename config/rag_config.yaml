@@ -1,0 +1,54 @@
+# Default RAG Pipeline Configuration
+
+audio:
+  whisper_model_size: "base"
+  sample_rate: 16000
+  chunk_duration_ms: 30000
+  cache_audio: true
+  supported_formats:
+    - mp3
+    - wav
+    - m4a
+    - flac
+    - ogg
+
+embedding:
+  model_name: "sentence-transformers/all-mpnet-base-v2"
+  dimension: 768
+  batch_size: 32
+  device: "cpu"
+  normalize: true
+
+cache:
+  enabled: true
+  cache_dir: "./cache"
+  vector_cache_size: 10000
+  document_cache_size: 1000
+  ttl_seconds: 86400
+
+chunking:
+  chunk_size: 500
+  chunk_overlap: 50
+  chunk_type: "token"
+  respect_sentences: true
+
+models:
+  llm:
+    model_name: "gpt-3.5-turbo"
+    temperature: 0.7
+    max_tokens: 1000
+  embedding:
+    model_name: "text-embedding-ada-002"
+    batch_size: 32
+
+prompts:
+  templates:
+    search: |
+      Given the following query, identify key concepts and relevant information:
+      Query: ${query}
+      Context: ${context}
+    response: |
+      Based on the following query and retrieved context, generate a comprehensive response:
+      Query: ${query}
+      Retrieved Context:
+      ${chunks} 

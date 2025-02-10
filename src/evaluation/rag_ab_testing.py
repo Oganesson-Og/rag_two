@@ -1,3 +1,88 @@
+"""
+RAG A/B Testing Manager Module
+----------------------------
+
+Specialized A/B testing manager for RAG-specific experiments, focusing on
+retrieval strategies, embedding methods, and ranking algorithms.
+
+Key Features:
+- RAG-specific experiment management
+- Vector store integration
+- Embedding comparison
+- Retrieval strategy testing
+- Performance metrics
+- Context preservation
+- Batch experimentation
+
+Technical Details:
+- Vector similarity metrics
+- Embedding generation
+- Result caching
+- Performance tracking
+- Statistical analysis
+- Experiment isolation
+- Data persistence
+
+Dependencies:
+- numpy>=1.24.0
+- uuid (standard library)
+- datetime (standard library)
+- typing (standard library)
+- .ab_testing (local module)
+- ..vector_store (local module)
+- ..embeddings (local module)
+
+Example Usage:
+    # Initialize manager
+    manager = RAGExperimentManager(
+        vector_store=vector_store,
+        embedding_manager=embedding_manager
+    )
+    
+    # Create retrieval experiment
+    manager.create_retrieval_experiment(
+        "semantic_vs_hybrid",
+        variants=[
+            {
+                "name": "semantic",
+                "config": {"method": "cosine"},
+                "implementation": semantic_search
+            },
+            {
+                "name": "hybrid",
+                "config": {"method": "hybrid"},
+                "implementation": hybrid_search
+            }
+        ]
+    )
+    
+    # Process query
+    results = manager.process_query(
+        experiment_name="semantic_vs_hybrid",
+        user_id="user123",
+        query="quantum mechanics"
+    )
+
+Experiment Categories:
+- Retrieval Strategy Testing
+- Embedding Model Comparison
+- Ranking Algorithm Evaluation
+- Context Window Optimization
+- Chunking Strategy Assessment
+
+Performance Metrics:
+- Relevance Score
+- Response Time
+- User Satisfaction
+- Context Precision
+- Result Diversity
+
+Author: Keith Satuku
+Version: 2.0.0
+Created: 2025
+License: MIT
+"""
+
 from typing import Dict, List, Optional
 from .ab_testing import ABTestingFramework, Variant, ExperimentType
 from ..vector_store.education_vector_store import EducationVectorStore

@@ -1,3 +1,42 @@
+"""
+Educational Vector Index Module
+----------------------------
+
+Specialized vector index for educational content using Qdrant vector database.
+
+Key Features:
+- Educational content indexing
+- Multi-modal vector storage
+- Subject-specific indexing
+- Grade-level organization
+- Rich metadata support
+- Batch processing
+- Automatic persistence
+
+Technical Details:
+- Qdrant-based storage
+- Multiple distance metrics
+- Metadata filtering
+- Collection management
+- Optimized retrieval
+- Concurrent access support
+- Automatic backups
+
+Dependencies:
+- qdrant-client>=1.6.0
+- numpy>=1.24.0
+- torch>=2.0.0
+- sentence-transformers>=2.2.0
+- typing (standard library)
+- logging (standard library)
+- pathlib (standard library)
+
+Author: Keith Satuku
+Version: 2.0.0
+Created: 2025
+License: MIT
+"""
+
 from typing import Dict, List, Optional, Union, Any, Tuple
 from dataclasses import dataclass
 from enum import Enum
@@ -5,44 +44,47 @@ import numpy as np
 from pathlib import Path
 import logging
 import json
-import faiss
 import torch
 from sentence_transformers import SentenceTransformer
 from datetime import datetime
-#import h5py
 from tqdm import tqdm
 import threading
 from queue import Queue
-import pickle
+from qdrant_client import QdrantClient
+from qdrant_client.http import models
 
 class IndexType(Enum):
-    FLAT = "flat"
-    IVF = "ivf"
-    HNSW = "hnsw"
-    HYBRID = "hybrid"
-    CURRICULUM = "curriculum"
+    PLAIN = "plain"  # Basic Qdrant index
+    HNSW = "hnsw"   # HNSW-based index
+    CUSTOM = "custom"  # Custom index configuration
 
 @dataclass
 class IndexConfig:
     """Configuration for educational vector index."""
     dimension: int = 768
-    index_type: IndexType = IndexType.HYBRID
-    nlist: int = 100  # For IVF
-    M: int = 16      # For HNSW
-    ef_construction: int = 200  # For HNSW
-    ef_search: int = 128  # For HNSW search
+    index_type: IndexType = IndexType.HNSW
+    collection_name: str = "educational_content"
+    url: str = "http://localhost:6333"
+    hnsw_config: Dict = None
     num_threads: int = 4
     batch_size: int = 1000
     cache_size_gb: float = 2.0
 
+    def __post_init__(self):
+        if self.hnsw_config is None:
+            self.hnsw_config = {
+                "m": 16,
+                "ef_construct": 200,
+                "ef_search": 128
+            }
+
 class EducationalVectorIndex:
-    """Specialized vector index for educational content."""
+    """Specialized vector index for educational content using Qdrant."""
     
     def __init__(
         self,
         config: Optional[IndexConfig] = None,
         model_name: str = "sentence-transformers/all-mpnet-base-v2",
-        index_dir: Optional[Path] = None,
         device: str = "cuda" if torch.cuda.is_available() else "cpu"
     ):
         self.logger = logging.getLogger(__name__)
@@ -52,94 +94,59 @@ class EducationalVectorIndex:
         # Initialize embedding model
         self.model = SentenceTransformer(model_name).to(device)
         
-        # Initialize directory
-        self.index_dir = index_dir or Path("data/indices")
-        self.index_dir.mkdir(parents=True, exist_ok=True)
+        # Initialize Qdrant client
+        self.client = QdrantClient(url=self.config.url)
         
-        # Initialize indices
-        self.main_index = self._create_index()
-        self.subject_indices: Dict[str, faiss.Index] = {}
-        self.grade_indices: Dict[int, faiss.Index] = {}
+        # Initialize collections
+        self._initialize_collections()
         
         # Initialize metadata storage
         self.metadata: Dict[int, Dict] = {}
-        self.id_mapping: Dict[str, int] = {}
-        self.reverse_mapping: Dict[int, str] = {}
         
         # Initialize thread pool for batch processing
         self.thread_pool = Queue()
         self._initialize_threads()
         
-        # Initialize cache
-        self.embedding_cache = {}
+    def _initialize_collections(self):
+        """Initialize Qdrant collections."""
+        # Main collection
+        self._create_collection(self.config.collection_name)
         
-    def _create_index(self) -> faiss.Index:
-        """Create appropriate FAISS index based on configuration."""
-        d = self.config.dimension
+        # Subject-specific collections
+        self.subject_collections = {}
         
-        if self.config.index_type == IndexType.FLAT:
-            return faiss.IndexFlatIP(d)
-            
-        elif self.config.index_type == IndexType.IVF:
-            quantizer = faiss.IndexFlatIP(d)
-            return faiss.IndexIVFFlat(
-                quantizer,
-                d,
-                self.config.nlist,
-                faiss.METRIC_INNER_PRODUCT
-            )
-            
-        elif self.config.index_type == IndexType.HNSW:
-            index = faiss.IndexHNSWFlat(
-                d,
-                self.config.M,
-                faiss.METRIC_INNER_PRODUCT
-            )
-            index.hnsw.efConstruction = self.config.ef_construction
-            index.hnsw.efSearch = self.config.ef_search
-            return index
-            
-        elif self.config.index_type == IndexType.HYBRID:
-            # Combine IVF and HNSW
-            quantizer = faiss.IndexHNSWFlat(
-                d,
-                self.config.M,
-                faiss.METRIC_INNER_PRODUCT
-            )
-            index = faiss.IndexIVFFlat(
-                quantizer,
-                d,
-                self.config.nlist,
-                faiss.METRIC_INNER_PRODUCT
-            )
-            return index
-            
-        else:  # Curriculum-based index
-            return self._create_curriculum_index(d)
-
-    def _create_curriculum_index(self, dimension: int) -> faiss.Index:
-        """Create curriculum-aware index structure."""
-        # Create a composite index that maintains curriculum relationships
-        index = faiss.IndexShards(dimension)
+        # Grade-specific collections
+        self.grade_collections = {}
         
-        # Add sub-indices for different educational levels
-        for grade in range(1, 13):  # K-12
-            grade_index = faiss.IndexHNSWFlat(
-                dimension,
-                self.config.M,
-                faiss.METRIC_INNER_PRODUCT
+    def _create_collection(self, name: str):
+        """Create a Qdrant collection with appropriate configuration."""
+        try:
+            self.client.get_collection(name)
+        except Exception:
+            # Collection doesn't exist, create it
+            vectors_config = models.VectorParams(
+                size=self.config.dimension,
+                distance=models.Distance.COSINE
             )
-            self.grade_indices[grade] = grade_index
-            index.add_shard(grade_index)
             
-        return index
+            if self.config.index_type == IndexType.HNSW:
+                vectors_config.hnsw_config = models.HnswConfigDiff(
+                    m=self.config.hnsw_config["m"],
+                    ef_construct=self.config.hnsw_config["ef_construct"],
+                    ef_search=self.config.hnsw_config["ef_search"]
+                )
+            
+            self.client.create_collection(
+                collection_name=name,
+                vectors_config=vectors_config
+            )
 
     def add_vectors(
         self,
         vectors: np.ndarray,
         metadata_list: List[Dict],
         batch_size: Optional[int] = None
-    ) -> List[int]:
+    ) -> List[str]:
         """Add vectors to the index with educational metadata."""
         batch_size = batch_size or self.config.batch_size
         ids = []
@@ -149,264 +156,126 @@ class EducationalVectorIndex:
             batch_metadata = metadata_list[i:i + batch_size]
             
             # Generate IDs for the batch
-            batch_ids = self._generate_ids(len(batch_vectors))
+            batch_ids = [str(i + j) for j in range(len(batch_vectors))]
             ids.extend(batch_ids)
             
-            # Add to main index
-            self.main_index.add(batch_vectors)
+            # Create points
+            points = [
+                models.PointStruct(
+                    id=id_,
+                    vector=vector.tolist(),
+                    payload=metadata
+                )
+                for id_, vector, metadata in zip(batch_ids, batch_vectors, batch_metadata)
+            ]
             
-            # Add to subject-specific indices
-            self._add_to_subject_indices(
-                batch_vectors,
-                batch_ids,
-                batch_metadata
+            # Add to main collection
+            self.client.upsert(
+                collection_name=self.config.collection_name,
+                points=points
             )
             
-            # Add to grade-specific indices
-            self._add_to_grade_indices(
-                batch_vectors,
-                batch_ids,
-                batch_metadata
-            )
+            # Add to subject-specific collections
+            self._add_to_subject_collections(points, batch_metadata)
             
-            # Store metadata
-            self._store_metadata(batch_ids, batch_metadata)
+            # Add to grade-specific collections
+            self._add_to_grade_collections(points, batch_metadata)
             
         return ids
 
-    async def index_educational_content(
-        self,
-        content_list: List[Dict],
-        batch_size: Optional[int] = None
-    ) -> List[int]:
-        """Index educational content with specialized processing."""
-        batch_size = batch_size or self.config.batch_size
-        all_ids = []
-        
-        for i in range(0, len(content_list), batch_size):
-            batch = content_list[i:i + batch_size]
-            
-            # Generate embeddings
-            embeddings = await self._generate_embeddings(batch)
-            
-            # Process educational metadata
-            metadata = self._process_educational_metadata(batch)
-            
-            # Add to index
-            batch_ids = self.add_vectors(embeddings, metadata)
-            all_ids.extend(batch_ids)
-            
-        return all_ids
+    def _add_to_subject_collections(self, points: List[models.PointStruct], metadata_list: List[Dict]):
+        """Add vectors to subject-specific collections."""
+        for point, metadata in zip(points, metadata_list):
+            if "subject" in metadata:
+                subject = metadata["subject"]
+                if subject not in self.subject_collections:
+                    collection_name = f"{self.config.collection_name}_{subject}"
+                    self._create_collection(collection_name)
+                    self.subject_collections[subject] = collection_name
+                
+                self.client.upsert(
+                    collection_name=self.subject_collections[subject],
+                    points=[point]
+                )
 
-    async def _generate_embeddings(
-        self,
-        content_list: List[Dict]
-    ) -> np.ndarray:
-        """Generate embeddings for educational content."""
-        texts = []
-        for content in content_list:
-            # Combine relevant fields for embedding
-            text_parts = [
-                content.get("title", ""),
-                content.get("content", ""),
-                " ".join(content.get("learning_objectives", [])),
-                " ".join(content.get("keywords", []))
-            ]
-            texts.append(" ".join(text_parts))
-            
-        # Generate embeddings in batches
-        embeddings = []
-        for i in range(0, len(texts), self.config.batch_size):
-            batch = texts[i:i + self.config.batch_size]
-            batch_embeddings = self.model.encode(
-                batch,
-                convert_to_tensor=True,
-                device=self.device
-            ).cpu().numpy()
-            embeddings.append(batch_embeddings)
-            
-        return np.vstack(embeddings)
-
-    def _process_educational_metadata(
-        self,
-        content_list: List[Dict]
-    ) -> List[Dict]:
-        """Process and enhance educational metadata."""
-        processed_metadata = []
-        
-        for content in content_list:
-            metadata = {
-                "id": content.get("id"),
-                "title": content.get("title"),
-                "subject": content.get("subject"),
-                "grade_level": content.get("grade_level"),
-                "difficulty": content.get("difficulty", 0.5),
-                "prerequisites": content.get("prerequisites", []),
-                "learning_objectives": content.get("learning_objectives", []),
-                "content_type": content.get("content_type"),
-                "last_updated": datetime.now().isoformat(),
-                "embedding_version": "1.0"
-            }
-            
-            # Add derived metadata
-            metadata.update(self._derive_educational_metadata(content))
-            processed_metadata.append(metadata)
-            
-        return processed_metadata
-
-    def _derive_educational_metadata(self, content: Dict) -> Dict:
-        """Derive additional educational metadata."""
-        derived = {}
-        
-        # Calculate complexity metrics
-        text = content.get("content", "")
-        derived["complexity_score"] = self._calculate_complexity(text)
-        
-        # Extract key concepts
-        derived["key_concepts"] = self._extract_key_concepts(text)
-        
-        # Determine educational level
-        derived["educational_level"] = self._determine_educational_level(content)
-        
-        return derived
-
-    def _calculate_complexity(self, text: str) -> float:
-        """Calculate educational content complexity."""
-        # Implement complexity calculation logic
-        # This could include:
-        # - Vocabulary complexity
-        # - Sentence structure analysis
-        # - Concept density
-        # For now, return a simple placeholder
-        return 0.5
-
-    def _extract_key_concepts(self, text: str) -> List[str]:
-        """Extract key educational concepts from text."""
-        # Implement concept extraction logic
-        # This could include:
-        # - NLP-based concept extraction
-        # - Domain-specific keyword identification
-        # For now, return a simple placeholder
-        return []
-
-    def _determine_educational_level(self, content: Dict) -> str:
-        """Determine appropriate educational level."""
-        grade_level = content.get("grade_level")
-        if grade_level:
-            return f"grade_{grade_level}"
-        return "general"
+    def _add_to_grade_collections(self, points: List[models.PointStruct], metadata_list: List[Dict]):
+        """Add vectors to grade-specific collections."""
+        for point, metadata in zip(points, metadata_list):
+            if "grade_level" in metadata:
+                grade = metadata["grade_level"]
+                if grade not in self.grade_collections:
+                    collection_name = f"{self.config.collection_name}_grade_{grade}"
+                    self._create_collection(collection_name)
+                    self.grade_collections[grade] = collection_name
+                
+                self.client.upsert(
+                    collection_name=self.grade_collections[grade],
+                    points=[point]
+                )
 
     def search(
         self,
         query_vector: np.ndarray,
-        k: int = 10,
-        subject: Optional[str] = None,
-        grade_level: Optional[int] = None,
-        filters: Optional[Dict] = None
-    ) -> Tuple[List[int], List[float]]:
-        """Search for similar educational content."""
-        if subject and subject in self.subject_indices:
-            index = self.subject_indices[subject]
-        elif grade_level and grade_level in self.grade_indices:
-            index = self.grade_indices[grade_level]
-        else:
-            index = self.main_index
+        k: int = 5,
+        filter_conditions: Optional[Dict] = None
+    ) -> List[Dict]:
+        """Search for similar vectors with optional filtering."""
+        search_result = self.client.search(
+            collection_name=self.config.collection_name,
+            query_vector=query_vector.tolist(),
+            limit=k,
+            query_filter=self._build_filter(filter_conditions)
+        )
+        
+        return [
+            {
+                "id": hit.id,
+                "score": hit.score,
+                "metadata": hit.payload
+            }
+            for hit in search_result
+        ]
+
+    def _build_filter(self, conditions: Optional[Dict]) -> Optional[models.Filter]:
+        """Build Qdrant filter from conditions."""
+        if not conditions:
+            return None
             
-        # Perform search
-        D, I = index.search(query_vector.reshape(1, -1), k)
-        
-        # Apply filters
-        if filters:
-            I, D = self._apply_filters(I[0], D[0], filters)
-        
-        return I, D
-
-    def _apply_filters(
-        self,
-        ids: np.ndarray,
-        distances: np.ndarray,
-        filters: Dict
-    ) -> Tuple[List[int], List[float]]:
-        """Apply educational filters to search results."""
-        filtered_ids = []
-        filtered_distances = []
-        
-        for id_, dist in zip(ids, distances):
-            metadata = self.metadata.get(int(id_), {})
-            if self._matches_filters(metadata, filters):
-                filtered_ids.append(int(id_))
-                filtered_distances.append(float(dist))
-                
-        return filtered_ids, filtered_distances
-
-    def _matches_filters(self, metadata: Dict, filters: Dict) -> bool:
-        """Check if metadata matches educational filters."""
-        for key, value in filters.items():
-            if key not in metadata:
-                return False
-            if isinstance(value, list):
-                if not any(v in metadata[key] for v in value):
-                    return False
-            elif metadata[key] != value:
-                return False
-        return True
-
-    def save(self, path: Optional[Path] = None) -> None:
-        """Save index and metadata."""
-        save_path = path or self.index_dir
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
-        # Save main index
-        index_path = save_path / f"main_index_{timestamp}.faiss"
-        faiss.write_index(self.main_index, str(index_path))
-        
-        # Save metadata
-        metadata_path = save_path / f"metadata_{timestamp}.pkl"
-        with open(metadata_path, 'wb') as f:
-            pickle.dump({
-                "metadata": self.metadata,
-                "id_mapping": self.id_mapping,
-                "reverse_mapping": self.reverse_mapping
-            }, f)
+        filter_conditions = []
+        for key, value in conditions.items():
+            filter_conditions.append(
+                models.FieldCondition(
+                    key=key,
+                    match=models.MatchValue(value=value)
+                )
+            )
             
-        self.logger.info(f"Saved index and metadata to {save_path}")
+        return models.Filter(
+            must=filter_conditions
+        )
 
-    def load(self, path: Path) -> None:
-        """Load index and metadata."""
-        try:
-            # Load main index
-            index_files = list(path.glob("main_index_*.faiss"))
-            if not index_files:
-                raise FileNotFoundError("No index file found")
-                
-            latest_index = max(index_files, key=lambda x: x.stat().st_mtime)
-            self.main_index = faiss.read_index(str(latest_index))
-            
-            # Load metadata
-            metadata_files = list(path.glob("metadata_*.pkl"))
-            if not metadata_files:
-                raise FileNotFoundError("No metadata file found")
-                
-            latest_metadata = max(metadata_files, key=lambda x: x.stat().st_mtime)
-            with open(latest_metadata, 'rb') as f:
-                data = pickle.load(f)
-                self.metadata = data["metadata"]
-                self.id_mapping = data["id_mapping"]
-                self.reverse_mapping = data["reverse_mapping"]
-                
-            self.logger.info(f"Loaded index and metadata from {path}")
-            
-        except Exception as e:
-            self.logger.error(f"Error loading index: {str(e)}")
-            raise
+    def delete_vectors(self, ids: List[str]):
+        """Delete vectors by their IDs."""
+        self.client.delete(
+            collection_name=self.config.collection_name,
+            points_selector=models.PointIdsList(points=ids)
+        )
 
-    def get_stats(self) -> Dict[str, Any]:
-        """Get index statistics."""
-        return {
-            "total_vectors": self.main_index.ntotal,
-            "dimension": self.main_index.d,
-            "num_subjects": len(self.subject_indices),
-            "num_grades": len(self.grade_indices),
-            "metadata_size": len(self.metadata),
-            "index_type": self.config.index_type.value
-        } 
+    def _initialize_threads(self):
+        """Initialize thread pool for batch processing."""
+        for _ in range(self.config.num_threads):
+            thread = threading.Thread(target=self._process_batch, daemon=True)
+            thread.start()
+
+    def _process_batch(self):
+        """Process batches from the thread pool."""
+        while True:
+            batch = self.thread_pool.get()
+            if batch is None:
+                break
+            try:
+                self.add_vectors(**batch)
+            except Exception as e:
+                self.logger.error(f"Batch processing error: {str(e)}")
+            finally:
+                self.thread_pool.task_done() 

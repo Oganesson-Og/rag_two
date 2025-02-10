@@ -1,3 +1,63 @@
+"""
+Metrics Collection Module
+-----------------------
+
+Comprehensive metrics collection system for monitoring RAG application performance
+and system health.
+
+Key Features:
+- Query tracking
+- System monitoring
+- Performance metrics
+- Custom metrics
+- Alert management
+- Metric aggregation
+- Time series tracking
+
+Technical Details:
+- Context managers
+- Time tracking
+- System stats
+- Metric storage
+- Alert handling
+- Data aggregation
+- Performance optimization
+
+Dependencies:
+- psutil>=5.9.0
+- typing (standard library)
+- datetime (standard library)
+- contextlib (standard library)
+
+Example Usage:
+    # Initialize collector
+    collector = MetricsCollector(
+        config_manager=config_manager,
+        metrics_config=metrics_config
+    )
+    
+    # Track query performance
+    with collector.track_query("search query") as metrics:
+        # Perform query
+        results = search_index(query)
+        metrics.num_chunks = len(results)
+    
+    # Collect system metrics
+    collector.collect_system_metrics()
+
+Metrics Types:
+- Query Performance
+- System Resources
+- Operation Timing
+- Custom Metrics
+- Alerts
+
+Author: Keith Satuku
+Version: 2.0.0
+Created: 2025
+License: MIT
+"""
+
 import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional, Callable

@@ -140,9 +140,10 @@ umap-learn>=0.5.4
 pynvml>=11.5.0
 
 # Image and diagram processing
-ray>=2.9.0
+ray[default]>=2.9.0
 PyMuPDF>=1.18.0
 whisper-openai>=1.0.0
+detectron2 @ git+https://github.com/facebookresearch/detectron2.git
 
 # API and Web
 fastapi>=0.68.0,<1.0.0

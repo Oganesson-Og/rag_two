@@ -2,7 +2,65 @@
 Audio Processing Module
 --------------------
 
-Comprehensive audio processing system for educational content using Whisper.
+Comprehensive audio processing system for educational content using Whisper
+and advanced audio analysis techniques.
+
+Key Features:
+- Audio transcription with Whisper
+- Speaker diarization
+- Technical term extraction
+- Audio quality analysis
+- Domain-specific processing
+- Multi-language support
+- Educational context awareness
+- Batch processing capabilities
+
+Technical Details:
+- Whisper model integration
+- Speaker recognition
+- Signal processing
+- Feature extraction
+- Quality metrics calculation
+- Educational term detection
+- Cross-domain analysis
+- Performance optimization
+
+Dependencies:
+- whisper>=1.0.0
+- torch>=2.0.0
+- numpy>=1.24.0
+- librosa>=0.10.0
+- speechbrain>=0.5.15
+- keybert>=0.7.0
+- nltk>=3.8.1
+- soundfile>=0.12.1
+
+Example Usage:
+    # Basic audio processing
+    processor = AudioProcessor(model_name="whisper-large-v3")
+    result = processor.process_audio("lecture.wav")
+    
+    # Advanced processing with context
+    result = processor.process_audio(
+        "lecture.wav",
+        context={
+            "subject": "physics",
+            "topic": "quantum_mechanics",
+            "keywords": ["wave function", "uncertainty"]
+        }
+    )
+    
+    # Multi-language processing
+    result = processor.translate_to_english("foreign_lecture.mp3")
+
+Processing Features:
+- Audio quality analysis
+- Speaker identification
+- Technical term extraction
+- Domain-specific processing
+- Educational context enhancement
+- Cross-language support
+- Batch processing
 
 Author: Keith Satuku
 Version: 1.0.0
@@ -34,14 +92,40 @@ ProcessingResult = Dict[str, Any]
 
 @dataclass
 class TranscriptionSegment:
-    """Represents a segment of transcribed audio."""
+    """
+    Represents a segment of transcribed audio.
+    
+    Attributes:
+        text (str): Transcribed text content
+        start (float): Start time in seconds
+        end (float): End time in seconds
+        confidence (float): Confidence score (0.0 to 1.0)
+    """
     text: str
     start: float
     end: float
     confidence: float
 
 class AudioProcessor:
-    """Enhanced audio processing and feature extraction."""
+    """
+    Enhanced audio processing and feature extraction for educational content.
+    
+    Attributes:
+        model_name (str): Name of the Whisper model to use
+        device (str): Processing device (CPU/CUDA)
+        config (Dict): Configuration options
+        logger (logging.Logger): Logger instance
+        whisper_model: Loaded Whisper model
+        diarization_model: Speaker diarization model
+        technical_term_extractor: Term extraction model
+    
+    Methods:
+        process_audio: Main audio processing pipeline
+        detect_language: Detect audio language
+        translate_to_english: Translate non-English audio
+        extract_features: Extract audio features
+        calculate_quality: Calculate audio quality metrics
+    """
     
     def __init__(
         self,
@@ -49,6 +133,14 @@ class AudioProcessor:
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
         config: Optional[Dict[str, Any]] = None
     ) -> None:
+        """
+        Initialize audio processor with specified model and configuration.
+        
+        Args:
+            model_name: Whisper model variant to use
+            device: Processing device (CPU/CUDA)
+            config: Optional configuration dictionary
+        """
         self.model_name = model_name
         self.device = device
         self.config = config or {}

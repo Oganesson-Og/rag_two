@@ -3,6 +3,55 @@ Cross-Modal Processing Module
 -------------------------
 
 Handles cross-modal reasoning and integration across different input types.
+
+Key Features:
+- Multi-modal fusion
+- Attention mechanisms
+- Feature extraction
+- Coherence scoring
+- Insight generation
+- Weight management
+- Error handling
+
+Technical Details:
+- Model loading
+- Feature fusion
+- Attention calculation
+- Score normalization
+- Tensor operations
+- Error handling
+- Resource management
+
+Dependencies:
+- torch>=2.0.0
+- transformers>=4.30.0
+- numpy>=1.24.0
+- datetime (standard library)
+- logging (standard library)
+
+Example Usage:
+    # Initialize processor
+    processor = CrossModalProcessor()
+    
+    # Combine modalities
+    result = processor.combine_modalities(
+        result={
+            "text": "Sample text",
+            "image": image_tensor,
+            "audio": audio_tensor
+        },
+        context={"domain": "physics"}
+    )
+
+Modality Weights:
+- Text: 0.4
+- Audio: 0.3
+- Image: 0.3
+
+Author: Keith Satuku
+Version: 2.0.0
+Created: 2025
+License: MIT
 """
 
 from typing import Dict, List, Optional, Any

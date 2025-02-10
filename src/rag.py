@@ -111,7 +111,7 @@ from datetime import datetime
 # from .embeddings.embedding_generator import EmbeddingGenerator
 from .document_processing.processor import DocumentProcessor
 from .models.query import Query, QueryResult, SearchMetadata
-from .document_processing.chunking import TextChunker
+from .chunking.base import TextChunker
 
 class RAGSystem:
     

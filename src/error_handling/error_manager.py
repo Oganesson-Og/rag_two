@@ -1,3 +1,70 @@
+"""
+Error Manager Module
+------------------
+
+Comprehensive error management system for educational RAG applications with 
+advanced tracking, recovery, and analysis capabilities.
+
+Key Features:
+- Error event tracking and management
+- Severity-based error handling
+- Automatic recovery mechanisms
+- Error pattern analysis
+- Multi-category error support
+- Context preservation
+- Recovery step generation
+
+Technical Details:
+- Thread-safe error tracking
+- Configurable recovery strategies
+- Error pattern detection
+- Asynchronous recovery
+- Persistent error logging
+- Performance monitoring
+- Context management
+
+Dependencies:
+- logging (standard library)
+- datetime (standard library)
+- threading (standard library)
+- queue (standard library)
+- json (standard library)
+- asyncio (standard library)
+- pathlib (standard library)
+
+Example Usage:
+    # Initialize manager
+    manager = ErrorManager(config_path="config/error.json")
+    
+    # Handle error with context
+    with manager.error_context(category=ErrorCategory.PROCESSING):
+        process_document()
+    
+    # Direct error handling
+    try:
+        embed_text()
+    except Exception as e:
+        event = manager.handle_error(
+            e, 
+            ErrorCategory.EMBEDDING,
+            {"text_length": 1000}
+        )
+
+Error Categories:
+- Content Processing
+- Embedding Generation
+- Retrieval Operations
+- Math Calculations
+- System Operations
+- Database Operations
+- Validation Tasks
+
+Author: Keith Satuku
+Version: 2.0.0
+Created: 2025
+License: MIT
+"""
+
 from typing import Dict, List, Optional, Any, Callable
 from datetime import datetime
 import logging
@@ -42,9 +109,7 @@ class ErrorEvent:
     resolved: bool = False
     resolution_time: Optional[datetime] = None
 
-class ErrorManager:
-    """Comprehensive error handling system for educational RAG."""
-    
+class ErrorManager:    
     def __init__(
         self,
         config_path: Optional[Path] = None,

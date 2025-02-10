@@ -1,3 +1,80 @@
+"""
+A/B Testing Framework Module
+--------------------------
+
+Core A/B testing framework for evaluating different RAG system components
+and strategies through controlled experiments.
+
+Key Features:
+- Variant assignment and tracking
+- Traffic splitting
+- Metric collection
+- Statistical analysis
+- Result persistence
+- Experiment management
+- Winner determination
+
+Technical Details:
+- Consistent user assignment
+- JSON-based result storage
+- Statistical computations
+- Configurable metrics
+- Experiment versioning
+- Data persistence
+- Type safety
+
+Dependencies:
+- numpy>=1.24.0
+- typing (standard library)
+- datetime (standard library)
+- json (standard library)
+- pathlib (standard library)
+- random (standard library)
+- dataclasses (standard library)
+- enum (standard library)
+
+Example Usage:
+    # Create experiment variants
+    variants = [
+        Variant(
+            id="v1",
+            name="baseline",
+            config={"k": 5},
+            implementation=baseline_retrieval
+        ),
+        Variant(
+            id="v2",
+            name="enhanced",
+            config={"k": 5, "rerank": True},
+            implementation=enhanced_retrieval
+        )
+    ]
+    
+    # Initialize framework
+    framework = ABTestingFramework(
+        experiment_name="retrieval_comparison",
+        experiment_type=ExperimentType.RETRIEVAL_STRATEGY,
+        variants=variants,
+        metrics=["relevance", "latency"]
+    )
+    
+    # Run experiment
+    variant = framework.assign_variant(user_id)
+    results = variant.implementation(**variant.config)
+    framework.record_result(variant.id, results, user_id)
+
+Experiment Types:
+- Retrieval Strategy Testing
+- Chunking Method Comparison
+- Embedding Model Evaluation
+- Ranking Algorithm Assessment
+
+Author: Keith Satuku
+Version: 2.0.0
+Created: 2025
+License: MIT
+"""
+
 from typing import Dict, List, Optional, Callable, Any
 import numpy as np
 from datetime import datetime

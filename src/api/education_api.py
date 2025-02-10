@@ -88,10 +88,10 @@ from ..audio.processor import AudioProcessor
 from ..config.settings import AUDIO_CONFIG
 
 # Import document processing components
-from ..document_processing.processor import DocumentProcessor
-from ..document_processing.ocr_processor import OCRProcessor
-from ..document_processing.preprocessor import Preprocessor
-from ..document_processing.diagram_analyzer import DiagramAnalyzer
+from src.document_processing.processor import DocumentProcessor
+from src.document_processing.processors.ocr import OCRProcessor
+from src.document_processing.preprocessor import Preprocessor
+from src.document_processing.processors.diagram_archive import DiagramAnalyzer
 
 from ..embeddings.embedding_generator import EmbeddingGenerator
 
@@ -147,6 +147,7 @@ class DocumentRequest(BaseModel):
             "detect_equations": True
         }
     )
+    content_type: str = Field(..., min_length=1)
 
 class ProcessedDocument(BaseModel):
     """Processed document response model."""
@@ -635,6 +636,7 @@ async def process_document(
                 "grade_level": document.grade_level,
                 "file_type": file_type,
                 "processing_options": document.processing_options,
+                "content_type": document.content_type,
                 **(document.metadata or {})
             },
             embeddings=embedding_generator.generate_embeddings(
@@ -647,6 +649,7 @@ async def process_document(
                 "num_diagrams": len(processing_result.get("diagrams", [])),
                 "num_tables": len(processing_result.get("tables", [])),
                 "num_equations": len(processing_result.get("equations", [])),
+                "content_type": document.content_type,
                 "processing_time": time.time()
             }
         )

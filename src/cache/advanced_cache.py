@@ -1,3 +1,67 @@
+"""
+Multi-Modal Cache Module
+----------------------
+
+Advanced caching system supporting multiple modalities with Redis and file-based
+storage for educational content processing system.
+
+Key Features:
+- Multi-modal data caching
+- Hybrid storage (Redis + File)
+- TTL support
+- Modality-specific caching
+- Automatic key generation
+- Cache clearing capabilities
+- Fallback mechanisms
+- Serialization handling
+
+Technical Details:
+- Redis primary storage
+- File-based backup storage
+- Pickle serialization
+- MD5 key hashing
+- TTL enforcement
+- Directory structure management
+- Atomic operations
+- Error handling
+
+Dependencies:
+- redis>=4.5.0
+- pickle-mixin>=1.0.2
+- pathlib>=1.0.1
+- hashlib (standard library)
+- typing-extensions>=4.7.0
+
+Example Usage:
+    # Initialize cache
+    cache = MultiModalCache(
+        redis_url="redis://localhost:6379/0",
+        file_cache_dir=Path("./cache"),
+        ttl=3600
+    )
+    
+    # Cache operations
+    cache.set("lecture_1", audio_data, modality="audio")
+    cached_data = cache.get("lecture_1", modality="audio")
+    
+    # Clear specific modality
+    cache.clear(modality="audio")
+
+Cache Features:
+- Multi-level caching
+- Modality separation
+- Automatic expiration
+- Persistence support
+- Memory optimization
+- Fast retrieval
+- Backup storage
+
+Author: Keith Satuku
+Version: 1.0.0
+Created: 2025
+License: MIT
+"""
+
 from typing import Any, Optional, Union
 import redis
 from pathlib import Path
@@ -6,18 +70,50 @@ import hashlib
 from datetime import datetime, timedelta
 
 class MultiModalCache:
+    """
+    Multi-modal caching system with Redis and file-based storage.
+    
+    Attributes:
+        redis_client: Redis connection client
+        file_cache_dir (Path): Directory for file-based cache
+        ttl (int): Default time-to-live in seconds
+    
+    Methods:
+        get: Retrieve cached data by key and modality
+        set: Store data with modality and optional TTL
+        clear: Clear cache for specific modality or all
+    """
+    
     def __init__(
         self,
         redis_url: str = "redis://localhost:6379/0",
         file_cache_dir: Path = Path("./cache"),
         ttl: int = 3600  # 1 hour default TTL
     ):
+        """
+        Initialize cache with Redis and file storage.
+        
+        Args:
+            redis_url: Redis connection URL
+            file_cache_dir: Directory for file cache
+            ttl: Default cache TTL in seconds
+        """
         self.redis_client = redis.from_url(redis_url)
         self.file_cache_dir = file_cache_dir
         self.ttl = ttl
         self.file_cache_dir.mkdir(parents=True, exist_ok=True)
         
     def get(self, key: str, modality: str) -> Optional[Any]:
+        """
+        Retrieve data from cache by key and modality.
+        
+        Args:
+            key: Cache key
+            modality: Data modality (e.g., "audio", "text")
+            
+        Returns:
+            Cached data if found and valid, None otherwise
+        """
         cache_key = self._generate_key(key, modality)
         
         # Try Redis first for faster access
@@ -40,6 +136,15 @@ class MultiModalCache:
         modality: str,
         ttl: Optional[int] = None
     ) -> None:
+        """
+        Store data in cache with modality.
+        
+        Args:
+            key: Cache key
+            value: Data to cache
+            modality: Data modality
+            ttl: Optional custom TTL in seconds
+        """
         cache_key = self._generate_key(key, modality)
         pickled_value = pickle.dumps(value)
         
@@ -56,10 +161,17 @@ class MultiModalCache:
             pickle.dump(value, f)
             
     def _generate_key(self, key: str, modality: str) -> str:
+        """Generate unique cache key from key and modality."""
         combined = f"{key}:{modality}"
         return hashlib.md5(combined.encode()).hexdigest()
         
     def clear(self, modality: Optional[str] = None) -> None:
+        """
+        Clear cache for specific modality or all cache.
+        
+        Args:
+            modality: Optional modality to clear, None for all
+        """
         if modality:
             pattern = f"*:{modality}*"
             keys = self.redis_client.keys(pattern)

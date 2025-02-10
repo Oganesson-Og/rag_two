@@ -4,6 +4,53 @@ Query Module
 
 Advanced query processing for the RAG pipeline with backwards compatibility.
 
+Key Features:
+- Query processing
+- Token handling
+- Hybrid similarity
+- Backwards compatibility
+- Weight management
+- Query enhancement
+- Performance optimization
+
+Technical Details:
+- Token processing
+- Vector operations
+- Query building
+- Similarity scoring
+- Weight normalization
+- Expression building
+- Error handling
+
+Dependencies:
+- numpy>=1.24.0
+- typing (standard library)
+- re (standard library)
+
+Example Usage:
+    # Initialize processor
+    processor = QueryProcessor()
+    
+    # Process query
+    query_expr, keywords = processor.process_query(
+        query="quantum mechanics",
+        min_match=0.6
+    )
+    
+    # Calculate hybrid similarity
+    scores, token_scores, vector_scores = processor.hybrid_similarity(
+        query_vec=query_embeddings,
+        doc_vecs=document_embeddings,
+        query_tokens=query_tokens,
+        doc_tokens=document_tokens
+    )
+
+Query Types:
+- Educational queries
+- Research questions
+- Content searches
+- Semantic matching
+
 Author: Keith Satuku
 Version: 1.0.0
 Created: 2025

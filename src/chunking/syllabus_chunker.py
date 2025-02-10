@@ -62,8 +62,8 @@ from typing import List, Dict, Optional
 import re
 from pathlib import Path
 import spacy
-from ...config.settings import CHUNK_SIZE, CHUNK_OVERLAP, SYLLABUS_PATH
-from ...nlp.tokenizer import UnifiedTokenizer, default_tokenizer  # Fixed import
+from ..config.settings import CHUNK_SIZE, CHUNK_OVERLAP, SYLLABUS_PATH
+from ..nlp.tokenizer import UnifiedTokenizer, default_tokenizer  # Fixed import
 
 
 

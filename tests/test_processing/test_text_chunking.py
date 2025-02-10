@@ -6,7 +6,7 @@ Tests for text chunking, segmentation, and preprocessing functionality.
 """
 
 import pytest
-from src.document_processing.chunking import TextChunker
+from src.chunking.base import TextChunker
 from src.document_processing.models import ChunkingConfig, Chunk
 
 class TestTextChunking:
