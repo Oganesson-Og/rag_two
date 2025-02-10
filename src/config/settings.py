@@ -13,36 +13,40 @@ License: MIT
 import os
 from pathlib import Path
 from ..nlp.tokenizer import UnifiedTokenizer, default_tokenizer  # Fixed import
-from ..nlp.search import SearchEngine
-from ..utils.token_counter import num_tokens_from_string
+#from ..nlp.search import SearchEngine
+#from ..rag.utils import num_tokens_from_string
 from datetime import date
 from enum import IntEnum, Enum
-import rag.utils
-from nlp import search
+from .. import rag
+from ..nlp import search
+from typing import Union, Dict, List, Optional
+from pydantic import BaseModel
 
 LIGHTEN = int(os.environ.get('LIGHTEN', "0"))
 
 # Base paths
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-PROJECT_ROOT = BASE_DIR.parent
+BASE_DIR = Path(__file__).parent.parent.parent
+CONFIG_DIR = BASE_DIR / "config"
+CACHE_DIR = BASE_DIR / ".cache"
 
 # Initialize tokenizer
 tokenizer = UnifiedTokenizer()
 
-# Data paths
-DATA_DIR = PROJECT_ROOT / "Form 4"
-CACHE_DIR = PROJECT_ROOT / ".cache"
-SYLLABUS_PATH = PROJECT_ROOT / "syllabus"
+# # Data paths
+# DATA_DIR = PROJECT_ROOT / "Form 4"
+# CACHE_DIR = PROJECT_ROOT / ".cache"
+# SYLLABUS_PATH = PROJECT_ROOT / "syllabus"
 
+CHUNK_SIZE = 512
+CHUNK_OVERLAP = 50
+SYLLABUS_PATH = CONFIG_DIR / "syllabus"
 # Create directories if they don't exist
-for directory in [DATA_DIR, CACHE_DIR, SYLLABUS_PATH]:
+for directory in [CACHE_DIR, SYLLABUS_PATH]:
     directory.mkdir(parents=True, exist_ok=True)
 
 # Model settings
 DEFAULT_EMBED_MODEL = "nomic-embed-text"
 DEFAULT_LLM_MODEL = "phi"
-CHUNK_SIZE = 500
-CHUNK_OVERLAP = 50
 
 # API settings
 OLLAMA_BASE_URL = "http://localhost:11434/api"
@@ -83,11 +87,14 @@ docStoreConn = None
 retrievaler = None
 kg_retrievaler = None
 
+# Embedding settings
 EMBEDDING_CONFIG = {
-    'model_name': 'sentence-transformers/all-MiniLM-L6-v2',
-    'max_length': 384,
-    'batch_size': 32
+    "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+    "cache_dir": str(CACHE_DIR / "embeddings"),
+    "dimension": 384,
+    "batch_size": 32
 }
+
 def init_settings():
     global LLM, LLM_FACTORY, LLM_BASE_URL, LIGHTEN, DATABASE_TYPE, DATABASE
     LIGHTEN = int(os.environ.get('LIGHTEN', "0"))
@@ -210,3 +217,29 @@ class RetCode(IntEnum, CustomEnum):
     SERVER_ERROR = 500
     FORBIDDEN = 403
     NOT_FOUND = 404
+
+class Settings(BaseModel):
+    embedding_model: str
+    vector_dimension: int
+    batch_size: Optional[int] = 32
+    device: str = "cpu"
+    cache_size: Union[int, str] = "1GB"
+    
+    class Config:
+        arbitrary_types_allowed = True
+
+QDRANT_CONFIG = {
+    "host": "localhost",
+    "port": 6333,
+    "prefer_grpc": True,
+    "collections": {
+        "education": {
+            "vector_size": 384,  
+            "distance": "Cosine",
+            "optimizers_config": {
+                "default_segment_number": 2,
+                "memmap_threshold": 20000
+            }
+        }
+    }
+}

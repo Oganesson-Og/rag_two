@@ -49,7 +49,7 @@ License: MIT
 
 from language_tool_python import LanguageTool
 import re
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Any
 import spacy
 from ..utils.text_cleaner import TextCleaner
 import json
@@ -59,20 +59,16 @@ from ..config.settings import MAX_TOKENS
 from ..nlp import Tokenizer  # Updated import
 
 class TextEnhancer:
-    """Enhances text quality through various processing steps."""
+    """Text enhancement and correction utilities."""
     
-    def __init__(self, config_path: Optional[str] = None):
-        """Initialize text enhancement tools.
-        
-        Args:
-            config_path: Optional path to configuration file containing abbreviations
-        """
-        self.language_tool = LanguageTool('en-US')
+    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+        self.config = config or {}
+        self.tool = LanguageTool('en-US')
         self.nlp = spacy.load('en_core_web_sm')
         self.text_cleaner = TextCleaner()
         
         # Load abbreviations from config file or use defaults
-        self.abbreviations = self._load_abbreviations(config_path)
+        self.abbreviations = self._load_abbreviations(self.config.get('abbreviations_path'))
         
         # Common academic headers/footers patterns
         self.header_patterns = [
@@ -170,7 +166,7 @@ class TextEnhancer:
             corrected_chunks = []
             for chunk in chunks:
                 # Get correction suggestions
-                matches = self.language_tool.check(chunk)
+                matches = self.tool.check(chunk)
                 
                 # Apply corrections, prioritizing high-confidence fixes
                 corrected = chunk
@@ -293,3 +289,45 @@ class TextEnhancer:
     def analyze_text(self, text: str) -> dict:
         """Analyze text properties."""
         return self.tokenizer.analyze_text(text)
+
+    def enhance_text(
+        self,
+        text: str,
+        options: Optional[Dict[str, bool]] = None
+    ) -> str:
+        """Enhance and correct text content."""
+        try:
+            options = options or {}
+            text = text.strip()
+            
+            # Apply enhancements
+            if options.get('fix_grammar', True):
+                text = self._fix_grammar(text)
+                
+            if options.get('improve_readability', True):
+                text = self._improve_readability(text)
+                
+            return text
+            
+        except Exception as e:
+            self.logger.error(f"Text enhancement error: {str(e)}")
+            raise
+
+    def _fix_grammar(self, text: str) -> str:
+        """Fix grammatical errors."""
+        try:
+            matches = self.tool.check(text)
+            return self.tool.correct(text)
+        except Exception as e:
+            self.logger.error(f"Grammar correction error: {str(e)}")
+            raise
+
+    def _improve_readability(self, text: str) -> str:
+        """Improve text readability."""
+        try:
+            doc = self.nlp(text)
+            # Implement readability improvements
+            return text
+        except Exception as e:
+            self.logger.error(f"Readability improvement error: {str(e)}")
+            raise

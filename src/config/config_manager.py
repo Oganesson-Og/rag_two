@@ -58,60 +58,77 @@ Version: 2.0.0
 Created: 2025
 License: MIT
 """
-from typing import Dict, Optional
-import yaml
-import json
+from typing import Dict, Union, Optional, Any, List
 from pathlib import Path
+import json
 import logging
+from datetime import datetime
 from .domain_config import EDUCATION_DOMAINS
+from dataclasses import dataclass
+
+@dataclass
+class ConfigSection:
+    """Configuration section with type hints."""
+    embedding: Dict[str, Union[str, int, float]]
+    processing: Dict[str, Union[str, int, float]]
+    storage: Dict[str, Union[str, int, float]]
+    search: Dict[str, Union[str, int, float]]
+    cache: Optional[Dict[str, Union[str, int, float]]] = None
+
+ConfigValue = Union[str, int, float, bool, List[Any], Dict[str, Any]]
+ConfigDict = Dict[str, ConfigValue]
 
 class ConfigManager:
     """Manages configuration for the RAG system."""
     
-    def __init__(self, config_path: Optional[str] = None):
-        self.config_path = config_path or "config/rag_config.yaml"
-        self.config = self._load_config()
+    def __init__(
+        self,
+        config_path: Optional[Union[str, Path]] = None,
+        defaults: Optional[ConfigDict] = None
+    ) -> None:
+        self.logger = logging.getLogger(__name__)
+        self.config_path = Path(config_path) if config_path else None
+        self.config: ConfigDict = defaults or {}
         
-    def _load_config(self) -> Dict:
+        if self.config_path and self.config_path.exists():
+            self._load_config()
+
+    def _load_config(self) -> None:
         """Load configuration from file."""
-        default_config = {
-            "embedding": {
-                "cache_dir": ".cache/embeddings",
-                "batch_size": 32,
-                "use_fp16": True
-            },
-            "retrieval": {
-                "top_k": 5,
-                "similarity_threshold": 0.7,
-                "reranking_enabled": True
-            },
-            "database": {
-                "host": "localhost",
-                "port": 5432,
-                "database": "ragdb",
-                "user": "raguser"
-            },
-            "api": {
-                "host": "0.0.0.0",
-                "port": 8000,
-                "workers": 4
-            },
-            "logging": {
-                "level": "INFO",
-                "file": "rag.log"
-            }
-        }
-        
         try:
-            if Path(self.config_path).exists():
-                with open(self.config_path, 'r') as f:
-                    file_config = yaml.safe_load(f)
-                    default_config.update(file_config)
+            with open(self.config_path) as f:
+                self.config.update(json.load(f))
         except Exception as e:
-            logging.warning(f"Error loading config file: {e}")
+            self.logger.error(f"Error loading config: {str(e)}")
+            raise
+
+    def _save_config(self) -> None:
+        """Save configuration to file."""
+        if not self.config_path:
+            return
             
-        return default_config
-    
+        try:
+            with open(self.config_path, 'w') as f:
+                json.dump(self.config, f, indent=2)
+        except Exception as e:
+            self.logger.error(f"Error saving config: {str(e)}")
+            raise
+
+    def get_section(self, section: str) -> Dict[str, Any]:
+        """Get configuration section."""
+        return self.config.get(section, {})
+        
+    def update_section(
+        self,
+        section: str,
+        values: Dict[str, Any]
+    ) -> None:
+        """Update configuration section."""
+        if section not in self.config:
+            self.config[section] = {}
+        self.config[section].update(values)
+        self._save_config()
+        
     def get_subject_config(self, subject: str, level: str) -> Dict:
         """Get subject-specific configuration."""
         for domain, config in EDUCATION_DOMAINS.items():
@@ -124,25 +141,15 @@ class ConfigManager:
                 }
         raise ValueError(f"Invalid subject: {subject}")
     
-    def save_config(self, config: Dict) -> None:
-        """Save configuration to file."""
-        try:
-            with open(self.config_path, 'w') as f:
-                yaml.dump(config, f)
-            self.config = config
-        except Exception as e:
-            logging.error(f"Error saving config: {e}")
-            raise
-    
     def update_config(self, updates: Dict) -> None:
         """Update configuration with new values."""
         def deep_update(d: Dict, u: Dict) -> Dict:
             for k, v in u.items():
-                if isinstance(v, dict):
+                if isinstance(v, (dict, list)):
                     d[k] = deep_update(d.get(k, {}), v)
                 else:
                     d[k] = v
             return d
         
-        self.config = deep_update(self.config, updates)
-        self.save_config(self.config) 
+        self.config = {**self.config, **updates}
+        self._save_config() 

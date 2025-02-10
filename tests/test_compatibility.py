@@ -10,8 +10,9 @@ Version: 1.0.0
 
 import pytest
 import numpy as np
-from ..src.nlp.tokenizer import rag_tokenizer
-from ..src.nlp.query import query
+from src.nlp.tokenizer import rag_tokenizer
+from src.nlp.query import query
+from src.nlp.search import SearchEngine
 
 def test_tokenizer_compatibility():
     # Test old-style tokenization
@@ -49,8 +50,6 @@ def test_query_compatibility():
     assert len(vec_sim) == 3
 
 def test_search_integration():
-    from ..src.nlp.search import SearchEngine
-    
     engine = SearchEngine()
     query_text = "test query"
     doc_text = "test document"

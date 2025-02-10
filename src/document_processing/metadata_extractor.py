@@ -61,15 +61,51 @@ Created: 2025
 License: MIT
 """
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Union, Any
 import spacy
 import re
+import logging
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 class MetadataExtractor:
+    """Extract metadata from documents."""
     
     def __init__(self):
-        self.nlp = spacy.load('en_core_web_sm')
+        self.nlp = spacy.load("en_core_web_sm")
         
+    def extract_metadata(self, content: str) -> Dict[str, str]:
+        """Extract metadata from content."""
+        metadata = {}
+        
+        try:
+            metadata['dates'] = self._extract_dates(content)
+            metadata['entities'] = self._extract_entities(content)
+            metadata['processed_at'] = datetime.now().isoformat()
+        except Exception as e:
+            logger.error("Error extracting metadata: %s", str(e))
+            
+        return metadata
+        
+    def _extract_dates(self, content: str) -> List[str]:
+        """Extract dates from content."""
+        dates = []
+        # Date extraction logic here
+        return dates
+        
+    def _extract_entities(self, content: str) -> List[str]:
+        """Extract named entities from content."""
+        entities = []
+        # Entity extraction logic here
+        return entities
+        
+    def _extract_keywords(self, content: str) -> List[str]:
+        """Extract keywords from content."""
+        keywords = []
+        # Keyword extraction logic here
+        return keywords
+
     def extract_from_path(self, file_path: str) -> Dict:
         """Extract metadata from file path."""
         path = Path(file_path)

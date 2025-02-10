@@ -15,7 +15,7 @@ import numpy as np
 from unittest.mock import Mock, patch
 from pathlib import Path
 
-from ..src.document_processing.processor import DocumentProcessor
+from src.document_processing.processor import DocumentProcessor
 from ..src.document_processing.ocr_processor import OCRProcessor
 from ..src.embeddings.embedding_generator import EmbeddingGenerator
 from ..src.nlp.tokenizer import rag_tokenizer

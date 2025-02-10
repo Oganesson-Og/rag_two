@@ -71,87 +71,87 @@ Created: 2025
 License: MIT
 """
 
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union, Any
 import numpy as np
+from numpy.typing import NDArray
+import logging
+from datetime import datetime
 from ..query.education_processor import EducationQueryProcessor
-from ..vector_store.pgvector_store import PGVectorStore
+from ..storage.vector_store.pgvector_store import PGVectorStore
 from ..embeddings.enhanced_generator import EnhancedEmbeddingGenerator
 from ..config.domain_config import get_domain_config
+from ..storage.vector_store.qdrant_store import QdrantVectorStore
+from ..embeddings.embedding_generator import EmbeddingGenerator
+
+# Type aliases
+Vector = Union[List[float], NDArray[np.float32]]
+RetrievalResult = Dict[str, Any]
 
 class EducationRetriever:
-    """Retrieval system specialized for educational content."""
+    """Enhanced education content retriever using Qdrant"""
     
     def __init__(
         self,
         subject: str,
         level: str,
-        top_k: int = 5,
-        similarity_threshold: float = 0.7
+        vector_store: Optional[QdrantVectorStore] = None,
+        embedding_model: Optional[str] = None
     ):
         self.subject = subject
         self.level = level
-        self.top_k = top_k
-        self.similarity_threshold = similarity_threshold
-        
-        # Initialize components
-        self.domain_config = get_domain_config(subject, level)
-        self.query_processor = EducationQueryProcessor(subject, level)
-        self.vector_store = PGVectorStore()
-        self.embedding_generator = EnhancedEmbeddingGenerator(
-            model_key=self.domain_config['model']
+        self.vector_store = vector_store or QdrantVectorStore(
+            collection_name=f"education_{subject}_{level}"
         )
-    
-    def retrieve(
+        self.embedding_generator = EmbeddingGenerator(
+            model_name=embedding_model
+        )
+
+    async def add_content(
+        self,
+        content: str,
+        metadata: Optional[Dict] = None
+    ) -> str:
+        """Add educational content to vector store"""
+        embedding = self.embedding_generator.generate_embedding(content)
+        
+        enhanced_metadata = {
+            **(metadata or {}),
+            "subject": self.subject,
+            "grade_level": self.level,
+            "content_type": "text",
+            "content_length": len(content),
+            "embedding_model": self.embedding_generator.model_name
+        }
+        
+        return await self.vector_store.add_vector(
+            vector=embedding,
+            metadata=enhanced_metadata
+        )
+
+    async def retrieve(
         self,
         query: str,
         filter_metadata: Optional[Dict] = None,
-        include_prerequisites: bool = False
+        top_k: int = 5
     ) -> List[Dict]:
-        """Retrieve relevant educational content.
+        """Retrieve relevant educational content"""
+        query_embedding = self.embedding_generator.generate_embedding(query)
         
-        Args:
-            query: User query
-            filter_metadata: Optional metadata filters
-            include_prerequisites: Whether to include prerequisites
-            
-        Returns:
-            List of relevant documents with scores
-        """
-        # Process query
-        processed_query = self.query_processor.process_query(query)
-        
-        # Prepare metadata filters
-        metadata_filter = {
-            'subject': self.subject,
-            'level': self.level
+        # Enhance filters with educational context
+        search_filters = {
+            "subject": self.subject,
+            "grade_level": self.level,
+            **(filter_metadata or {})
         }
-        if filter_metadata:
-            metadata_filter.update(filter_metadata)
         
-        # Get base vector search results
-        vector_results = self.vector_store.similarity_search(
-            query_embedding=processed_query['embedding'],
-            k=self.top_k * 2,  # Get more for reranking
-            metadata_filter=metadata_filter
+        results = await self.vector_store.search(
+            query_vector=query_embedding,
+            k=top_k,
+            filters=search_filters
         )
         
-        # Rerank results
-        reranked_results = self._rerank_results(
-            query=processed_query,
-            results=vector_results
-        )
-        
-        # Filter and format results
-        final_results = []
-        for result in reranked_results[:self.top_k]:
-            if result['score'] >= self.similarity_threshold:
-                final_results.append(self._format_result(result))
-        
-        if include_prerequisites:
-            final_results = self._include_prerequisites(final_results)
-        
-        return final_results
-    
+        return results
+
     def _rerank_results(
         self,
         query: Dict,

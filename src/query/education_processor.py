@@ -1,4 +1,8 @@
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union, Any
+import numpy as np
+from numpy.typing import NDArray
+import logging
+from datetime import datetime
 
 """
 Educational Query Processing Module
@@ -66,9 +70,18 @@ import re
 
 
 class EducationQueryProcessor(QueryProcessor):
-    """Education-specific query processor."""
+    """Process educational queries with domain awareness."""
     
-    def __init__(self, subject: str, level: str):
+    def __init__(
+        self,
+        subject: str,
+        level: str,
+        config: Optional[Dict[str, Any]] = None
+    ) -> None:
+        self.subject = subject
+        self.level = level
+        self.config = config or {}
+        self.logger = logging.getLogger(__name__)
         self.domain_config = get_domain_config(subject, level)
         super().__init__(domain=self.domain_config['domain'])
         
@@ -98,26 +111,55 @@ class EducationQueryProcessor(QueryProcessor):
     def process_query(
         self,
         query: str,
-        expand: bool = True,
-        classify: bool = True
-    ) -> Dict:
-        """Process education-specific query."""
-        # Get base processing
-        result = super().process_query(query, expand, classify)
-        
-        # Add education-specific processing
-        result.update({
-            'subject': self.domain_config['subject'],
-            'level': self.domain_config['level'],
-            'query_intent': self._detect_educational_intent(query),
-            'syllabus_topics': self._match_syllabus_topics(query),
-            'complexity_level': self._estimate_complexity(query)
-        })
-        
-        return result
+        options: Optional[Dict[str, bool]] = None
+    ) -> Dict[str, Any]:
+        """Process educational query."""
+        try:
+            options = options or {}
+            
+            # Add logging
+            self.logger.info(
+                f"Processing query: {query}, "
+                f"subject: {self.subject}, level: {self.level}"
+            )
+            
+            result = {
+                'original_query': query,
+                'processed_query': self._preprocess_query(query),
+                'subject': self.subject,
+                'level': self.level,
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            if options.get('extract_intent', True):
+                result['intent'] = self._extract_intent(query)
+                
+            if options.get('extract_concepts', True):
+                result['concepts'] = self._extract_concepts(query)
+                
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Query processing error: {str(e)}")
+            raise
     
-    def _detect_educational_intent(self, query: str) -> str:
-        """Detect educational intent of query."""
+    def _preprocess_query(self, query: str) -> str:
+        """Preprocess query text."""
+        for step in self.domain_config['preprocessing']:
+            config = PREPROCESSING_CONFIGS.get(step, {})
+            
+            # Apply patterns
+            for pattern in config.get('patterns', []):
+                query = re.sub(pattern, ' ', query)
+            
+            # Apply replacements
+            for old, new in config.get('replacements', {}).items():
+                query = query.replace(old, new)
+        
+        return query.strip().lower()
+    
+    def _extract_intent(self, query: str) -> str:
+        """Extract educational intent."""
         query = query.lower()
         
         # Check concept understanding
@@ -137,8 +179,8 @@ class EducationQueryProcessor(QueryProcessor):
         
         return 'general'
     
-    def _match_syllabus_topics(self, query: str) -> List[str]:
-        """Match query to syllabus topics."""
+    def _extract_concepts(self, query: str) -> List[str]:
+        """Extract educational concepts."""
         matches = []
         doc = self.nlp(query.lower())
         
@@ -148,37 +190,4 @@ class EducationQueryProcessor(QueryProcessor):
             if token.text in keywords:
                 matches.append(token.text)
         
-        return matches
-    
-    def _estimate_complexity(self, query: str) -> str:
-        """Estimate query complexity level."""
-        doc = self.nlp(query)
-        
-        # Simple heuristics for complexity
-        word_count = len(doc)
-        technical_terms = len([
-            token for token in doc 
-            if token.text.lower() in self.domain_config['keywords']
-        ])
-        
-        if word_count < 8 and technical_terms <= 1:
-            return 'basic'
-        elif word_count < 15 and technical_terms <= 3:
-            return 'intermediate'
-        else:
-            return 'advanced'
-    
-    def _preprocess_query(self, query: str) -> str:
-        """Apply education-specific preprocessing."""
-        for step in self.domain_config['preprocessing']:
-            config = PREPROCESSING_CONFIGS.get(step, {})
-            
-            # Apply patterns
-            for pattern in config.get('patterns', []):
-                query = re.sub(pattern, ' ', query)
-            
-            # Apply replacements
-            for old, new in config.get('replacements', {}).items():
-                query = query.replace(old, new)
-        
-        return query.strip() 
+        return matches 

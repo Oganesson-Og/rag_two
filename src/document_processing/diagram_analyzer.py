@@ -46,7 +46,7 @@ import cv2
 import numpy as np
 import torch
 import logging
-from transformers import DetrImageProcessor, DetrForObjectDetection
+from transformers import DetrImageProcessor, DetrForObjectDetection, AutoConfig
 from PIL import Image
 import pytesseract
 from rdkit import Chem
@@ -55,8 +55,15 @@ from detectron2 import model_zoo
 from detectron2.engine import DefaultPredictor
 from detectron2.config import get_cfg
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 import re
+from numpy.typing import NDArray
+from datetime import datetime
+import io
+
+# Type aliases
+ImageArray = NDArray[np.uint8]
+AnalysisResult = Dict[str, Any]
 
 @dataclass
 class AnalysisResult:
@@ -70,22 +77,78 @@ class AnalysisResult:
     metadata: Dict
 
 class DiagramAnalyzer:
-    """Advanced diagram analysis system."""
-
-    def __init__(self, model_config: Optional[Dict] = None):
-        """Initialize the analyzer with models."""
+    """Handles diagram analysis with fallback options."""
+    
+    def __init__(self, model_name: str = "facebook/detr-resnet-50"):
         self.logger = logging.getLogger(__name__)
-        self.model_config = model_config or {}
+        self.model = None
+        self.processor = None
         
         try:
-            self.scientific_notation_model = self._load_notation_model()
-            self.relationship_analyzer = self._load_relationship_model()
-            self.label_detector = self._load_label_model()
-            self.chemical_structure_model = self._load_chemical_model()
-            self.equation_extractor = self._load_equation_model()
+            self.processor = DetrImageProcessor.from_pretrained(model_name)
+            self.model = DetrForObjectDetection.from_pretrained(model_name)
         except Exception as e:
-            self.logger.error(f"Failed to initialize DiagramAnalyzer: {str(e)}")
+            self.logger.warning(f"Failed to initialize DETR model: {str(e)}")
+            self.logger.info("Falling back to basic diagram processing")
+            
+    def process(self, image: Any) -> Dict[str, Any]:
+        """Process diagram with fallback to basic analysis if DETR unavailable."""
+        if self.model and self.processor:
+            return self._process_with_detr(image)
+        return self._process_basic(image)
+
+    def analyze_image(
+        self,
+        image: Union[ImageArray, bytes],
+        options: Optional[Dict[str, bool]] = None
+    ) -> AnalysisResult:
+        """Analyze diagram image."""
+        try:
+            options = options or {}
+            
+            # Convert bytes to image if needed
+            if isinstance(image, bytes):
+                image = Image.open(io.BytesIO(image))
+                image = np.array(image)
+            
+            # Ensure correct type
+            if not isinstance(image, np.ndarray):
+                raise TypeError("Image must be numpy array or bytes")
+            
+            result = {
+                'type': self._detect_diagram_type(image),
+                'elements': self._detect_elements(image),
+                'metadata': {
+                    'analyzer': self.__class__.__name__,
+                    'timestamp': datetime.now().isoformat(),
+                    'image_shape': image.shape,
+                    'options': options
+                }
+            }
+            
+            if options.get('detect_text', True):
+                result['text'] = self._extract_text(image)
+                
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Diagram analysis error: {str(e)}")
             raise
+
+    def _detect_diagram_type(self, image: ImageArray) -> str:
+        """Detect type of diagram."""
+        # Implement diagram type detection
+        return "unknown"
+
+    def _detect_elements(self, image: ImageArray) -> List[Dict[str, Any]]:
+        """Detect diagram elements."""
+        # Implement element detection
+        return []
+
+    def _extract_text(self, image: ImageArray) -> List[Dict[str, Any]]:
+        """Extract text from diagram."""
+        # Implement text extraction
+        return []
 
     def analyze_diagram(self, image: np.ndarray) -> AnalysisResult:
         """Main entry point for diagram analysis."""
@@ -149,13 +212,9 @@ class DiagramAnalyzer:
         Loads DETR model for detecting arrows and relationships
         """
         try:
-            # Initialize DETR model and processor
-            processor = DetrImageProcessor.from_pretrained("facebook/detr-resnet-50")
-            model = DetrForObjectDetection.from_pretrained("facebook/detr-resnet-50")
-            
             # Move model to GPU if available
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            model.to(device)
+            self.model.to(device)
             
             # Define relationship categories
             categories = {
@@ -166,8 +225,6 @@ class DiagramAnalyzer:
             }
             
             return {
-                "processor": processor,
-                "model": model,
                 "device": device,
                 "categories": categories
             }
@@ -242,29 +299,15 @@ class DiagramAnalyzer:
     def _preprocess_image(self, image: np.ndarray) -> np.ndarray:
         """Preprocess image for analysis."""
         try:
-            # Convert to RGB if needed
-            if len(image.shape) == 2:
-                image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
-            elif image.shape[2] == 4:
-                image = cv2.cvtColor(image, cv2.COLOR_BGRA2RGB)
-                
-            # Resize if too large
-            max_dim = 1024
-            height, width = image.shape[:2]
-            if max(height, width) > max_dim:
-                scale = max_dim / max(height, width)
-                image = cv2.resize(image, None, fx=scale, fy=scale)
-                
-            # Enhance contrast
-            lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
-            l, a, b = cv2.split(lab)
-            clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
-            l = clahe.apply(l)
-            enhanced = cv2.merge([l, a, b])
-            enhanced = cv2.cvtColor(enhanced, cv2.COLOR_LAB2RGB)
-            
-            return enhanced
-            
+            # Convert to grayscale
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            # Apply adaptive thresholding
+            binary = cv2.adaptiveThreshold(
+                gray, 255, 
+                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                cv2.THRESH_BINARY, 11, 2
+            )
+            return binary
         except Exception as e:
             self.logger.error(f"Error preprocessing image: {str(e)}")
             raise
@@ -276,11 +319,11 @@ class DiagramAnalyzer:
             img_pil = Image.fromarray(image)
             
             # Configure Tesseract for scientific notation
-            config = self.scientific_notation_model['config']
-            custom_config = f'--oem {config["oem"]} --psm {config["psm"]} -c tessedit_char_whitelist={config["char_whitelist"]}'
+            config = self._load_notation_model()['config']
+            custom_config = f'--oem {config["oem"]} --psm {config["psm"]}'
             
             # Extract text
-            text = self.scientific_notation_model['engine'].image_to_string(
+            text = self._load_notation_model()['engine'].image_to_string(
                 img_pil, config=custom_config)
             
             # Process and validate scientific notation
@@ -297,21 +340,17 @@ class DiagramAnalyzer:
     def analyze_relationships(self, image: np.ndarray) -> List[Dict]:
         """Analyzes arrows and relationships between components"""
         try:
-            # Prepare image for DETR
-            processor = self.relationship_analyzer["processor"]
-            model = self.relationship_analyzer["model"]
-            
             # Process image
-            inputs = processor(images=image, return_tensors="pt")
-            outputs = model(**inputs)
+            inputs = self.processor(images=image, return_tensors="pt")
+            outputs = self.model(**inputs)
             
             # Post-process to detect arrows and connections
             target_sizes = torch.tensor([image.shape[:2]])
-            results = processor.post_process_object_detection(
+            results = self.processor.post_process_object_detection(
                 outputs, target_sizes=target_sizes)[0]
             
             relationships = []
-            categories = self.relationship_analyzer["categories"]
+            categories = self._load_relationship_model()["categories"]
             
             for score, label, box in zip(results["scores"], results["labels"], 
                                        results["boxes"]):
@@ -331,7 +370,7 @@ class DiagramAnalyzer:
         """Detects and extracts labeled parts"""
         try:
             # Use Detectron2 for label detection
-            outputs = self.label_detector["predictor"](image)
+            outputs = self._load_label_model()["predictor"](image)
             
             # Process predictions
             instances = outputs["instances"].to("cpu")
@@ -345,7 +384,7 @@ class DiagramAnalyzer:
                     # Extract text within the detected box
                     cropped = image[int(box[1]):int(box[3]), 
                                   int(box[0]):int(box[2])]
-                    text = self.label_detector["ocr_engine"].image_to_string(cropped)
+                    text = self._load_label_model()["ocr_engine"].image_to_string(cropped)
                     
                     labels.append({
                         "text": text.strip(),
@@ -370,8 +409,8 @@ class DiagramAnalyzer:
                                          cv2.CHAIN_APPROX_SIMPLE)
             
             chemical_structures = []
-            rdkit = self.chemical_structure_model["rdkit"]
-            min_confidence = self.chemical_structure_model["min_confidence"]
+            rdkit = self._load_chemical_model()["rdkit"]
+            min_confidence = self._load_chemical_model()["min_confidence"]
             
             for contour in contours:
                 if cv2.contourArea(contour) > 100:  # Size threshold
@@ -400,12 +439,12 @@ class DiagramAnalyzer:
         """Extracts mathematical equations from the diagram"""
         try:
             # Preprocess image for equation detection
-            processed_image = self.equation_extractor["preprocessor"](image)
+            processed_image = self._load_equation_model()["preprocessor"](image)
             
             # Use specialized math OCR model
-            config = self.equation_extractor["config"]
-            validator = self.equation_extractor["validator"]
-            postprocessor = self.equation_extractor["postprocessor"]
+            config = self._load_equation_model()["config"]
+            validator = self._load_equation_model()["validator"]
+            postprocessor = self._load_equation_model()["postprocessor"]
             
             # Placeholder for actual equation recognition
             # You would need to implement or import actual model processing here
@@ -462,7 +501,7 @@ class DiagramAnalyzer:
                     'chemical_structure',
                     'equation_extractor'
                 ],
-                'device': str(next(self.relationship_analyzer['model'].parameters()).device)
+                'device': str(next(self.model.parameters()).device)
             }
         }
 
@@ -480,112 +519,32 @@ class DiagramAnalyzer:
                                      cv2.THRESH_BINARY, 11, 2)
         return binary
 
-    def _validate_equation(self, equation: str) -> bool:
-        """
-        Helper method to validate extracted equations.
-        Checks for basic mathematical equation validity.
-        """
-        if not equation or equation.isspace():
-            return False
-            
-        try:
-            # Remove whitespace and check if empty
-            eq = equation.strip()
-            if not eq:
-                return False
-                
-            # Basic validation checks
-            # Check for balanced parentheses/brackets
-            brackets = {'(': ')', '[': ']', '{': '}'}
-            stack = []
-            
-            for char in eq:
-                if char in brackets.keys():
-                    stack.append(char)
-                elif char in brackets.values():
-                    if not stack:
-                        return False
-                    if char != brackets[stack.pop()]:
-                        return False
-                        
-            if stack:  # Unmatched opening brackets
-                return False
-                
-            # Check for invalid sequences of operators
-            invalid_sequences = ['++', '--', '**', '//', '==', '+-', '-+', '*/', '/*']
-            for seq in invalid_sequences:
-                if seq in eq:
-                    return False
-                    
-            # Check if equation contains at least one mathematical operator or equals sign
-            operators = set('+-*/=≠≈≤≥')
-            if not any(op in eq for op in operators):
-                return False
-                
-            return True
-            
-        except Exception as e:
-            self.logger.warning(f"Equation validation error: {str(e)}")
-            return False
+    def _convert_to_latex(self, text: str) -> str:
+        """Helper method to convert extracted text to LaTeX format"""
+        # Implement LaTeX conversion logic here
+        return text
 
-    def _convert_to_latex(self, equation: str) -> str:
-        """
-        Helper method to convert equation to LaTeX format.
-        Handles common mathematical notations and symbols.
-        """
-        if not equation or not self._validate_equation(equation):
-            return ""
-            
+    def process_chemical_diagram(self, image: NDArray) -> Optional[str]:
+        """Process chemical diagram to SMILES."""
         try:
-            # Create a mapping of common mathematical symbols to LaTeX
-            latex_map = {
-                '×': r'\times ',
-                '÷': r'\div ',
-                '≠': r'\neq ',
-                '≤': r'\leq ',
-                '≥': r'\geq ',
-                '±': r'\pm ',
-                '∞': r'\infty ',
-                '≈': r'\approx ',
-                '→': r'\rightarrow ',
-                '←': r'\leftarrow ',
-                '√': r'\sqrt{',
-                '∑': r'\sum ',
-                '∫': r'\int ',
-                'π': r'\pi ',
-                'θ': r'\theta ',
-                'α': r'\alpha ',
-                'β': r'\beta ',
-                'Δ': r'\Delta '
-            }
-            
-            # Convert equation to LaTeX
-            latex_eq = equation
-            
-            # Replace symbols with their LaTeX equivalents
-            for symbol, latex in latex_map.items():
-                latex_eq = latex_eq.replace(symbol, latex)
-            
-            # Handle superscripts (e.g., x^2)
-            latex_eq = re.sub(r'(\w+)\^(\d+)', r'{\1}^{\2}', latex_eq)
-            
-            # Handle subscripts (e.g., x_1)
-            latex_eq = re.sub(r'(\w+)_(\d+)', r'{\1}_{\2}', latex_eq)
-            
-            # Handle fractions (e.g., 1/2)
-            latex_eq = re.sub(r'(\d+)/(\d+)', r'\\frac{\1}{\2}', latex_eq)
-            
-            # Handle square roots if not already in LaTeX format
-            if r'\sqrt{' not in latex_eq:
-                latex_eq = re.sub(r'sqrt\((.*?)\)', r'\\sqrt{\1}', latex_eq)
-            
-            # Wrap in math mode delimiters if not already present
-            if not latex_eq.startswith('$') and not latex_eq.startswith(r'\['):
-                latex_eq = f'${latex_eq}$'
-            
-            return latex_eq
-            
+            mol = Chem.MolFromImage(image)
+            if mol is not None:
+                return Chem.MolToSmiles(mol)
+            return None
         except Exception as e:
-            self.logger.warning(f"LaTeX conversion error: {str(e)}")
-            return equation  # Return original equation if conversion fails
+            self.logger.error("Error processing chemical diagram: %s", str(e))
+            return None
+
+    def process_equations(self, equations: List[str]) -> List[str]:
+        """Process mathematical equations."""
+        try:
+            equations_copy = equations.copy()
+            for i, eq in enumerate(equations_copy):
+                # Process equation
+                pass
+        except Exception as e:
+            self.logger.error("Error processing equations: %s", str(e))
+            return equations
+
+ 
     

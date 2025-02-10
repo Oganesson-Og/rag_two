@@ -64,9 +64,9 @@ Version: 2.2.0
 Created: 2025
 License: MIT
 """
-from typing import Dict, List, Optional, Union
-from fastapi import FastAPI, HTTPException, File, UploadFile
-from pydantic import BaseModel
+from typing import Dict, List, Optional, Union, Any
+from fastapi import FastAPI, HTTPException, File, UploadFile, Depends, status, BackgroundTasks, WebSocket
+from pydantic import BaseModel, Field
 from ..retrieval.education_retriever import EducationRetriever
 from ..embeddings.education_benchmark import EducationBenchmark
 from ..config.domain_config import EDUCATION_DOMAINS
@@ -80,6 +80,9 @@ import os
 import uuid
 import time  # Add at top with other imports
 import logging
+from typing_extensions import TypeAlias
+from datetime import datetime
+from fastapi.websockets import WebSocketDisconnect
 
 from ..audio.processor import AudioProcessor
 from ..config.settings import AUDIO_CONFIG
@@ -92,30 +95,37 @@ from ..document_processing.diagram_analyzer import DiagramAnalyzer
 
 from ..embeddings.embedding_generator import EmbeddingGenerator
 
-app = FastAPI(title="Education RAG API")
+# Add with other imports at top
+from ..nlp.cross_modal import CrossModalProcessor
 
-# Initialize audio processor
+# Add with other imports
+from ..feedback.processor import FeedbackProcessor
 
-audio_processor = AudioProcessor(
-    model_name=AUDIO_CONFIG.get('model', 'whisper-large-v3'),
-    device='cuda' if torch.cuda.is_available() else 'cpu'
-)
+from ..assessment.processor import AssessmentProcessor
 
-# Initialize processors
-document_processor = DocumentProcessor()
-ocr_processor = OCRProcessor()
-preprocessor = Preprocessor()
-diagram_analyzer = DiagramAnalyzer()
-
-embedding_generator = EmbeddingGenerator()
-
+# Type aliases
+DocumentContent = Union[str, bytes]
+ProcessingResult = Dict[str, Any]
+SearchResult = Dict[str, Any]
 
 class QueryRequest(BaseModel):
-    query: str
+    """Query request model."""
+    query: str = Field(..., min_length=1)
     subject: str
     level: str
-    filters: Optional[Dict] = None
-    top_k: Optional[int] = 5
+    filters: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    top_k: int = Field(default=5, gt=0)
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "query": "Explain quantum mechanics",
+                "subject": "physics",
+                "level": "a-level",
+                "filters": {"complexity": "advanced"},
+                "top_k": 5
+            }
+        }
 
 class BenchmarkRequest(BaseModel):
     subject: str
@@ -124,45 +134,105 @@ class BenchmarkRequest(BaseModel):
 
 class DocumentRequest(BaseModel):
     """Document processing request model."""
-    content: Union[str, bytes]
-    file_type: str
+    content: DocumentContent
+    file_type: str = Field(..., min_length=1)
     subject: str
     grade_level: str
-    metadata: Optional[Dict] = None
-    processing_options: Optional[Dict] = {
-        "perform_ocr": True,
-        "analyze_diagrams": True,
-        "extract_tables": True,
-        "detect_equations": True
-    }
+    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    processing_options: Dict[str, bool] = Field(
+        default_factory=lambda: {
+            "perform_ocr": True,
+            "analyze_diagrams": True,
+            "extract_tables": True,
+            "detect_equations": True
+        }
+    )
 
 class ProcessedDocument(BaseModel):
     """Processed document response model."""
-    document_id: str
-    content: Dict
-    metadata: Dict
-    embeddings: Optional[List[float]]
-    confidence_score: float
-    processing_summary: Dict
+    document_id: str = Field(..., min_length=1)
+    content: Dict[str, Any]
+    metadata: Dict[str, Any]
+    embeddings: Optional[List[float]] = None
+    confidence_score: float = Field(ge=0.0, le=1.0)
+    processing_summary: Dict[str, Any]
+
+    class Config:
+        arbitrary_types_allowed = True
 
 class AudioQueryRequest(BaseModel):
     """Audio query request model."""
     subject: str
     grade_level: str
-    language: Optional[str] = "en"
-    task_type: Optional[str] = "transcribe"  # or "translate"
-    additional_context: Optional[Dict] = None
+    language: str = Field(default="en")
+    task_type: str = Field(default="transcribe")
+    additional_context: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
-# Cache retrievers for different subject/level combinations
-retrievers: Dict[str, EducationRetriever] = {}
+    class Config:
+        schema_extra = {
+            "example": {
+                "subject": "physics",
+                "grade_level": "a-level",
+                "language": "en",
+                "task_type": "transcribe",
+                "additional_context": {
+                    "topic": "quantum mechanics"
+                }
+            }
+        }
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="Education RAG API",
+    description="API for educational content retrieval and processing",
+    version="1.0.0"
+)
+
+# Initialize components with proper error handling
+try:
+    audio_processor = AudioProcessor(
+        model_name=AUDIO_CONFIG.get('model', 'whisper-large-v3'),
+        device='cuda' if torch.cuda.is_available() else 'cpu'
+    )
+
+    document_processor = DocumentProcessor()
+    ocr_processor = OCRProcessor()
+    preprocessor = Preprocessor()
+    diagram_analyzer = DiagramAnalyzer()
+    embedding_generator = EmbeddingGenerator()
+
+except Exception as e:
+    logging.error(f"Error initializing components: {str(e)}")
+    raise
+
+# Cache for retrievers
+retrievers: Dict[str, Any] = {}
+
+# Add after imports
+logger = logging.getLogger(__name__)
 
 def generate_document_id() -> str:
     """Generate a unique document ID."""
     return str(uuid.uuid4())
 
-@app.post("/query")
-async def query_endpoint(request: QueryRequest) -> Dict:
-    """Query endpoint for educational content retrieval."""
+@app.post("/query", response_model=Dict[str, Any])
+async def query_endpoint(
+    request: QueryRequest,
+    background_tasks: BackgroundTasks
+) -> Dict[str, Any]:
+    """
+    Query endpoint for educational content retrieval.
+    
+    Args:
+        request: Query request containing search parameters
+        background_tasks: FastAPI background tasks handler
+    
+    Returns:
+        Dict containing search results and metadata
+    
+    Raises:
+        HTTPException: If query processing fails
+    """
     try:
         # Get or create retriever
         retriever_key = f"{request.subject}_{request.level}"
@@ -170,7 +240,7 @@ async def query_endpoint(request: QueryRequest) -> Dict:
             retrievers[retriever_key] = EducationRetriever(
                 subject=request.subject,
                 level=request.level,
-                top_k=request.top_k or 5
+                top_k=request.top_k
             )
         
         # Get results
@@ -179,21 +249,45 @@ async def query_endpoint(request: QueryRequest) -> Dict:
             filter_metadata=request.filters
         )
         
+        # Add to background tasks
+        background_tasks.add_task(
+            log_query,
+            query=request.query,
+            subject=request.subject,
+            results_count=len(results)
+        )
+        
         return {
             "status": "success",
             "results": results,
             "metadata": {
                 "subject": request.subject,
                 "level": request.level,
-                "total_results": len(results)
+                "total_results": len(results),
+                "query_time": time.time()
             }
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Query error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Query processing failed: {str(e)}"
+        )
 
-@app.post("/benchmark")
-async def benchmark_endpoint(request: BenchmarkRequest) -> Dict:
-    """Run benchmarks for educational embeddings."""
+@app.post("/benchmark", response_model=Dict[str, Any])
+async def benchmark_endpoint(request: BenchmarkRequest) -> Dict[str, Any]:
+    """
+    Run benchmarks for educational embeddings.
+    
+    Args:
+        request: Benchmark request parameters
+    
+    Returns:
+        Dict containing benchmark results
+    
+    Raises:
+        HTTPException: If benchmark fails
+    """
     try:
         benchmark = EducationBenchmark(
             subject=request.subject,
@@ -207,10 +301,19 @@ async def benchmark_endpoint(request: BenchmarkRequest) -> Dict:
             
         return {
             "status": "success",
-            "benchmark_results": results
+            "benchmark_results": results,
+            "metadata": {
+                "subject": request.subject,
+                "level": request.level,
+                "timestamp": datetime.now().isoformat()
+            }
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Benchmark error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Benchmark failed: {str(e)}"
+        )
 
 @app.get("/subjects")
 async def list_subjects() -> Dict:
@@ -227,17 +330,6 @@ async def transcribe_audio(
 ):
     """
     Transcribe audio and process educational content.
-    
-    Features:
-    - Multi-language support
-    - Educational context awareness
-    - Noise reduction
-    - Speaker diarization
-    - Technical term recognition
-    
-    Args:
-        file: Audio file (supported formats: wav, mp3, m4a, flac)
-        request: Query parameters and context
     """
     try:
         # Validate audio file
@@ -254,7 +346,7 @@ async def transcribe_audio(
             tmp_path = tmp_file.name
 
         try:
-            # Process audio
+            # Process audio with enhanced features
             result = audio_processor.process_audio(
                 audio_path=tmp_path,
                 task_type=request.task_type,
@@ -266,13 +358,13 @@ async def transcribe_audio(
                 }
             )
 
-            # Get educational context
+            # Get educational context with enhanced retrieval
             education_retriever = EducationRetriever(
                 subject=request.subject,
                 level=request.grade_level
             )
 
-            # Process transcribed text
+            # Process transcribed text with domain-specific context
             educational_context = education_retriever.retrieve(
                 query=result['text'],
                 filter_metadata={
@@ -281,6 +373,7 @@ async def transcribe_audio(
                 }
             )
 
+            # Enhanced response with detailed metrics
             return {
                 "status": "success",
                 "transcription": {
@@ -288,12 +381,23 @@ async def transcribe_audio(
                     "confidence": result['confidence'],
                     "language": result['detected_language'],
                     "duration": result['duration'],
-                    "segments": result['segments']
+                    "segments": result['segments'],
+                    "word_timestamps": result.get('word_timestamps', []),
+                    "speaker_diarization": result.get('speaker_diarization', [])
                 },
                 "educational_context": educational_context,
                 "technical_terms": result.get('technical_terms', []),
-                "speakers": result.get('speakers', []),
-                "summary": result.get('summary', "")
+                "domain_specific_terms": result.get('domain_specific_terms', []),
+                "complexity_metrics": {
+                    "readability_score": result.get('readability_score'),
+                    "technical_density": result.get('technical_density'),
+                    "confidence_by_segment": result.get('confidence_by_segment', {})
+                },
+                "metadata": {
+                    "processing_time": result.get('processing_time'),
+                    "model_used": result.get('model_used'),
+                    "audio_quality": result.get('audio_quality')
+                }
             }
 
         finally:
@@ -301,6 +405,7 @@ async def transcribe_audio(
             os.unlink(tmp_path)
 
     except Exception as e:
+        logger.error(f"Audio processing error: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Audio processing error: {str(e)}"
@@ -359,8 +464,45 @@ async def audio_feedback(
     file: UploadFile = File(...)
 ):
     """Process audio feedback for educational content."""
-    # Implementation for handling audio feedback
-    pass
+    try:
+        # First transcribe the audio
+        transcription = await transcribe_audio(file, request)
+        
+        # Process the feedback
+        feedback_processor = FeedbackProcessor(
+            subject=request.subject,
+            grade_level=request.grade_level
+        )
+        
+        # Analyze feedback content
+        analysis_result = feedback_processor.analyze_feedback(
+            transcription['transcription']['text'],
+            context=request.additional_context
+        )
+        
+        return {
+            "status": "success",
+            "feedback_analysis": {
+                "sentiment": analysis_result.sentiment,
+                "key_points": analysis_result.key_points,
+                "suggested_improvements": analysis_result.suggestions,
+                "topic_alignment": analysis_result.topic_alignment,
+                "comprehension_level": analysis_result.comprehension_level
+            },
+            "transcription": transcription['transcription'],
+            "confidence_metrics": {
+                "feedback_confidence": analysis_result.confidence,
+                "topic_relevance": analysis_result.topic_relevance,
+                "clarity_score": analysis_result.clarity_score
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Feedback processing error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Feedback processing error: {str(e)}"
+        )
 
 @app.post("/audio/assessment")
 async def audio_assessment(
@@ -368,28 +510,71 @@ async def audio_assessment(
     file: UploadFile = File(...)
 ):
     """Process audio for educational assessment."""
-    # Implementation for audio-based assessment
-    pass
+    try:
+        # Transcribe the audio response
+        transcription = await transcribe_audio(file, request)
+        
+        # Initialize assessment processor
+        assessment_processor = AssessmentProcessor(
+            subject=request.subject,
+            grade_level=request.grade_level,
+            assessment_criteria=request.additional_context.get('criteria', {})
+        )
+        
+        # Perform detailed assessment
+        assessment_result = assessment_processor.evaluate_response(
+            transcription['transcription']['text'],
+            context=request.additional_context
+        )
+        
+        return {
+            "status": "success",
+            "assessment_results": {
+                "overall_score": assessment_result.overall_score,
+                "criteria_scores": assessment_result.criteria_scores,
+                "strengths": assessment_result.strengths,
+                "areas_for_improvement": assessment_result.improvements,
+                "topic_mastery": assessment_result.topic_mastery,
+                "misconceptions": assessment_result.misconceptions
+            },
+            "transcription": transcription['transcription'],
+            "evaluation_metrics": {
+                "response_completeness": assessment_result.completeness,
+                "technical_accuracy": assessment_result.technical_accuracy,
+                "explanation_clarity": assessment_result.clarity,
+                "concept_understanding": assessment_result.understanding
+            },
+            "recommendations": {
+                "study_areas": assessment_result.study_recommendations,
+                "resources": assessment_result.recommended_resources,
+                "practice_exercises": assessment_result.practice_suggestions
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Assessment processing error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Assessment processing error: {str(e)}"
+        )
 
 @app.post("/document/process", response_model=ProcessedDocument)
 async def process_document(
     document: Optional[DocumentRequest] = None,
     file: Optional[UploadFile] = File(None)
-):
+) -> ProcessedDocument:
     """
     Process educational documents with advanced analysis.
-    
-    Features:
-    - Multi-format support (PDF, Images, Text)
-    - OCR processing
-    - Diagram analysis
-    - Table extraction
-    - Equation detection
-    - Educational context awareness
     
     Args:
         document: Text-based document request
         file: File upload for binary documents
+    
+    Returns:
+        ProcessedDocument containing analysis results
+    
+    Raises:
+        HTTPException: If document processing fails
     """
     try:
         # Handle file upload
@@ -397,6 +582,11 @@ async def process_document(
             content = await file.read()
             file_type = file.filename.split('.')[-1].lower()
         else:
+            if not document:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Either document or file must be provided"
+                )
             content = document.content
             file_type = document.file_type
 
@@ -410,50 +600,34 @@ async def process_document(
         }
 
         # Route to appropriate processor based on file type
-        if file_type in ['png', 'jpg', 'jpeg', 'tiff', 'bmp']:
-            # Image processing with OCR
-            ocr_result = ocr_processor.process_image(
-                content,
-                detect_diagrams=document.processing_options.get("analyze_diagrams", True),
-                detect_tables=document.processing_options.get("extract_tables", True)
+        try:
+            if file_type in ['png', 'jpg', 'jpeg', 'tiff', 'bmp']:
+                processing_result.update(
+                    ocr_processor.process_image(
+                        content,
+                        detect_diagrams=document.processing_options.get("analyze_diagrams", True),
+                        detect_tables=document.processing_options.get("extract_tables", True)
+                    )
+                )
+            elif file_type == 'pdf':
+                processing_result.update(
+                    document_processor.process_pdf(
+                        content,
+                        options=document.processing_options
+                    )
+                )
+            else:
+                processing_result["text_content"] = content
+
+        except Exception as e:
+            logger.error(f"Processing error: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Error processing document: {str(e)}"
             )
-            processing_result.update(ocr_result)
 
-        elif file_type == 'pdf':
-            # PDF processing
-            pdf_result = document_processor.process_pdf(
-                content,
-                options=document.processing_options
-            )
-            processing_result.update(pdf_result)
-
-        else:
-            # Text-based document processing
-            processing_result["text_content"] = content
-
-        # Preprocess extracted text
-        preprocessed_content = preprocessor.process(
-            processing_result["text_content"],
-            subject=document.subject,
-            grade_level=document.grade_level
-        )
-        processing_result["preprocessed_text"] = preprocessed_content
-
-        # Analyze diagrams if present
-        if processing_result.get("diagrams") and document.processing_options.get("analyze_diagrams"):
-            diagram_results = diagram_analyzer.analyze_diagrams(
-                processing_result["diagrams"]
-            )
-            processing_result["diagram_analysis"] = diagram_results
-
-        # Generate embeddings
-        embeddings = embedding_generator.generate_embeddings(
-            preprocessed_content,
-            subject=document.subject
-        )
-
-        # Prepare response
-        response = ProcessedDocument(
+        # Create response
+        return ProcessedDocument(
             document_id=generate_document_id(),
             content=processing_result,
             metadata={
@@ -463,26 +637,27 @@ async def process_document(
                 "processing_options": document.processing_options,
                 **(document.metadata or {})
             },
-            embeddings=embeddings,
+            embeddings=embedding_generator.generate_embeddings(
+                processing_result["text_content"],
+                subject=document.subject
+            ),
             confidence_score=calculate_confidence_score(processing_result),
             processing_summary={
                 "extracted_text_length": len(processing_result["text_content"]),
                 "num_diagrams": len(processing_result.get("diagrams", [])),
                 "num_tables": len(processing_result.get("tables", [])),
                 "num_equations": len(processing_result.get("equations", [])),
-                "processing_time": calculate_processing_time()
+                "processing_time": time.time()
             }
         )
 
-        # Store processed document
-        await store_processed_document(response)
-
-        return response
-
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Document processing error: {str(e)}", exc_info=True)
         raise HTTPException(
-            status_code=500,
-            detail=f"Document processing error: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Document processing failed: {str(e)}"
         )
 
 @app.post("/document/batch")
@@ -514,4 +689,93 @@ async def store_processed_document(document: ProcessedDocument) -> None:
     # For now, just log the document ID
     logging.info(f"Stored document with ID: {document.document_id}")
     pass
+
+async def log_query(query: str, subject: str, results_count: int) -> None:
+    """Log query details for analytics."""
+    try:
+        logger.info(
+            f"Query executed - Text: {query}, Subject: {subject}, "
+            f"Results: {results_count}, Time: {datetime.now().isoformat()}"
+        )
+    except Exception as e:
+        logger.error(f"Error logging query: {str(e)}")
+
+@app.websocket("/stream")
+async def stream_endpoint(websocket: WebSocket):
+    """
+    Streaming endpoint for real-time educational content processing.
+    Handles audio, text, and image streams with cross-modal reasoning.
+    """
+    try:
+        await websocket.accept()
+        
+        while True:
+            data = await websocket.receive_json()
+            
+            # Process different modalities
+            if data["type"] == "audio":
+                result = await process_audio_stream(data["content"])
+            elif data["type"] == "text":
+                result = await process_text_stream(data["content"]) 
+            elif data["type"] == "image":
+                result = await process_image_stream(data["content"])
+            
+            # Cross-modal reasoning
+            if data.get("cross_modal", False):
+                result = await cross_modal_reasoning(result, data.get("context", {}))
+                
+            await websocket.send_json(result)
+            
+    except WebSocketDisconnect:
+        logger.info("Client disconnected")
+    except Exception as e:
+        logger.error(f"Streaming error: {str(e)}")
+        await websocket.close()
+
+async def process_audio_stream(content: bytes) -> Dict:
+    """Process streaming audio data."""
+    processor = AudioProcessor()
+    return await processor.process_stream(content)
+
+async def process_text_stream(content: str) -> Dict:
+    """Process streaming text data."""
+    return {
+        "text": content,
+        "processed": True,
+        "timestamp": datetime.now().isoformat()
+    }
+
+async def process_image_stream(content: bytes) -> Dict:
+    """Process streaming image data."""
+    analyzer = DiagramAnalyzer()
+    return await analyzer.process_stream(content)
+
+async def cross_modal_reasoning(
+    result: Dict,
+    context: Dict
+) -> Dict:
+    """
+    Perform cross-modal reasoning across different input types.
+    Combines insights from text, audio, and visual modalities.
+    """
+    try:
+        # Initialize cross-modal processor
+        processor = CrossModalProcessor()
+        
+        # Combine modalities
+        enriched_result = processor.combine_modalities(
+            result=result,
+            context=context
+        )
+        
+        return {
+            "original": result,
+            "enriched": enriched_result,
+            "cross_modal_score": processor.calculate_coherence(),
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Cross-modal reasoning error: {str(e)}")
+        return result
 

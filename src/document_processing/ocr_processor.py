@@ -42,46 +42,74 @@ Created: 2025
 License: MIT
 """
 
+from typing import Dict, List, Optional, Union, Any
+import numpy as np
+from numpy.typing import NDArray
 import pytesseract
 from PIL import Image
-import cv2
-import numpy as np
-from ..config.ocr_config import OCRConfig
+import logging
+from datetime import datetime
+import io
 
 class OCRProcessor:
-    def __init__(self, config=None):
-        self.config = config or OCRConfig()
-        pytesseract.pytesseract.tesseract_cmd = self.config.TESSERACT_PATH
+    """OCR processing for document images."""
+    
+    def __init__(
+        self,
+        lang: str = "eng",
+        config: Optional[Dict[str, Any]] = None
+    ) -> None:
+        self.lang = lang
+        self.config = config or {}
+        self.logger = logging.getLogger(__name__)
 
-    def process_image(self, image):
-        """Process single image with OCR"""
-        # Preprocess image
-        processed = self.preprocess_image(image)
-        
-        # Perform OCR
-        text = pytesseract.image_to_string(
-            processed,
-            lang=self.config.TESSERACT_LANG,
-            config=f'--psm {self.config.PAGE_SEGMENTATION_MODE}'
-        )
-        
-        return text
+    def process_image(
+        self,
+        image: Union[NDArray[np.uint8], bytes],
+        options: Optional[Dict[str, bool]] = None
+    ) -> Dict[str, Any]:
+        """Process image with OCR."""
+        try:
+            options = options or {}
+            
+            # Convert bytes to image if needed
+            if isinstance(image, bytes):
+                image = Image.open(io.BytesIO(image))
+            elif isinstance(image, np.ndarray):
+                image = Image.fromarray(image)
+                
+            # Perform OCR
+            text = pytesseract.image_to_string(
+                image,
+                lang=self.lang,
+                config=self.config.get('tesseract_config', '')
+            )
+            
+            return {
+                'text': text,
+                'metadata': {
+                    'processor': self.__class__.__name__,
+                    'language': self.lang,
+                    'timestamp': datetime.now().isoformat(),
+                    'confidence': self._get_confidence(image)
+                }
+            }
+            
+        except Exception as e:
+            self.logger.error(f"OCR processing error: {str(e)}")
+            raise
 
-    def preprocess_image(self, image):
-        """Preprocess image for better OCR results"""
-        # Convert to grayscale
-        gray = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2GRAY)
-        
-        # Apply thresholding
-        _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        
-        # Denoise
-        denoised = cv2.fastNlMeansDenoising(binary)
-        
-        return Image.fromarray(denoised)
-
-    def get_confidence(self, image):
-        """Get OCR confidence score"""
-        data = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)
-        confidences = [int(conf) for conf in data['conf'] if conf != '-1']
-        return sum(confidences) / len(confidences) if confidences else 0
+    def _get_confidence(self, image: Image.Image) -> float:
+        """Get OCR confidence score."""
+        try:
+            data = pytesseract.image_to_data(
+                image,
+                lang=self.lang,
+                output_type=pytesseract.Output.DICT
+            )
+            
+            confidences = [int(c) for c in data['conf'] if c != '-1']
+            return sum(confidences) / len(confidences) if confidences else 0.0
+            
+        except Exception:
+            return 0.0

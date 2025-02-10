@@ -13,14 +13,14 @@ License: MIT
 import logging
 import re
 from dataclasses import dataclass
-from typing import List, Dict, Optional, Union, Tuple
+from typing import List, Dict, Optional, Union, Tuple, TypedDict, Any
 
 from .tokenizer import default_tokenizer as rag_tokenizer
 from .query import default_query_processor as query
 import numpy as np
 from ..utils.text_cleaner import TextCleaner
-from ..rag.utils import rmSpace
 from ..utils.doc_store_conn import DocStoreConnection, MatchDenseExpr, FusionExpr, OrderByExpr
+from src.rag.utils import rmSpace
 
 PAGERANK_FLD = "pagerank_fea"
 TAG_FLD = "tag_feas"
@@ -32,16 +32,15 @@ class Dealer:
         self.qryr = query.FulltextQueryer()
         self.dataStore = dataStore
 
-    @dataclass
     class SearchResult:
         total: int
-        ids: list[str]
-        query_vector: list[float] | None = None
-        field: dict | None = None
-        highlight: dict | None = None
-        aggregation: list | dict | None = None
-        keywords: list[str] | None = None
-        group_docs: list[list] | None = None
+        ids: List[str]
+        query_vector: Optional[List[float]] = None
+        field: Optional[Dict] = None
+        highlight: Optional[Dict] = None
+        aggregation: Optional[Dict] = None
+        keywords: Optional[List[str]] = None
+        group_docs: Optional[List[List]] = None
 
     def get_vector(self, txt, emb_mdl, topk=10, similarity=0.1):
         qv, _ = emb_mdl.encode_queries(txt)
@@ -64,11 +63,11 @@ class Dealer:
                 condition[key] = req[key]
         return condition
 
-    def search(self, req, idx_names: str | list[str],
-               kb_ids: list[str],
+    def search(self, req, idx_names: Union[str, List[str]],
+               kb_ids: List[str],
                emb_mdl=None,
                highlight=False,
-               rank_feature: dict | None = None
+               rank_feature: Optional[Dict] = None
                ):
         filters = self.get_filters(req)
         orderBy = OrderByExpr()
@@ -244,7 +243,7 @@ class Dealer:
 
         return res, seted
 
-    def _rank_feature_scores(self, query_rfea, search_res):
+    def _rank_feature_scores(self, query_rfea: Optional[Dict], search_res: 'Dealer.SearchResult') -> np.ndarray:
         ## For rank feature(tag_fea) scores.
         rank_fea = []
         pageranks = []
@@ -270,7 +269,7 @@ class Dealer:
 
     def rerank(self, sres, query, tkweight=0.3,
                vtweight=0.7, cfield="content_ltks",
-               rank_feature: dict | None = None
+               rank_feature: Optional[Dict] = None
                ):
         _, keywords = self.qryr.question(query)
         vector_size = len(sres.query_vector)
@@ -309,7 +308,7 @@ class Dealer:
 
     def rerank_by_model(self, rerank_mdl, sres, query, tkweight=0.3,
                         vtweight=0.7, cfield="content_ltks",
-                        rank_feature: dict | None = None):
+                        rank_feature: Optional[Dict] = None):
         _, keywords = self.qryr.question(query)
 
         for i in sres.ids:
@@ -324,7 +323,7 @@ class Dealer:
             ins_tw.append(tks)
 
         tksim = self.qryr.token_similarity(keywords, ins_tw)
-        vtsim, _ = rerank_mdl.similarity(query, [rmSpace(" ".join(tks)) for tks in ins_tw])
+        vtsim, _ = rerank_mdl.similarity(query, [" ".join(tks).strip() for tks in ins_tw])
         ## For rank feature(tag_fea) scores.
         rank_fea = self._rank_feature_scores(rank_feature, sres)
 
@@ -339,7 +338,7 @@ class Dealer:
     def retrieval(self, question, embd_mdl, tenant_ids, kb_ids, page, page_size, similarity_threshold=0.2,
                   vector_similarity_weight=0.3, top=1024, doc_ids=None, aggs=True,
                   rerank_mdl=None, highlight=False,
-                  rank_feature: dict | None = {PAGERANK_FLD: 10}):
+                  rank_feature: Optional[Dict] = {PAGERANK_FLD: 10}):
         ranks = {"total": 0, "chunks": [], "doc_aggs": {}}
         if not question:
             return ranks
@@ -429,7 +428,7 @@ class Dealer:
         return tbl
 
     def chunk_list(self, doc_id: str, tenant_id: str,
-                   kb_ids: list[str], max_count=1024,
+                   kb_ids: List[str], max_count=1024,
                    offset=0,
                    fields=["docnm_kwd", "content_with_weight", "img_id"]):
         condition = {"doc_id": doc_id}
@@ -447,17 +446,17 @@ class Dealer:
                 break
         return res
 
-    def all_tags(self, tenant_id: str, kb_ids: list[str], S=1000):
+    def all_tags(self, tenant_id: str, kb_ids: List[str], S=1000):
         res = self.dataStore.search([], [], {}, [], OrderByExpr(), 0, 0, index_name(tenant_id), kb_ids, ["tag_kwd"])
         return self.dataStore.getAggregation(res, "tag_kwd")
 
-    def all_tags_in_portion(self, tenant_id: str, kb_ids: list[str], S=1000):
+    def all_tags_in_portion(self, tenant_id: str, kb_ids: List[str], S=1000):
         res = self.dataStore.search([], [], {}, [], OrderByExpr(), 0, 0, index_name(tenant_id), kb_ids, ["tag_kwd"])
         res = self.dataStore.getAggregation(res, "tag_kwd")
         total = np.sum([c for _, c in res])
         return {t: (c + 1) / (total + S) for t, c in res}
 
-    def tag_content(self, tenant_id: str, kb_ids: list[str], doc, all_tags, topn_tags=3, keywords_topn=30, S=1000):
+    def tag_content(self, tenant_id: str, kb_ids: List[str], doc, all_tags, topn_tags=3, keywords_topn=30, S=1000):
         idx_nm = index_name(tenant_id)
         match_txt = self.qryr.paragraph(doc["title_tks"] + " " + doc["content_ltks"], doc.get("important_kwd", []), keywords_topn)
         res = self.dataStore.search([], [], {}, [match_txt], OrderByExpr(), 0, 0, idx_nm, kb_ids, ["tag_kwd"])
@@ -470,7 +469,7 @@ class Dealer:
         doc[TAG_FLD] = {a: c for a, c in tag_fea if c > 0}
         return True
 
-    def tag_query(self, question: str, tenant_ids: str | list[str], kb_ids: list[str], all_tags, topn_tags=3, S=1000):
+    def tag_query(self, question: str, tenant_ids: Union[str, List[str]], kb_ids: List[str], all_tags, topn_tags=3, S=1000):
         if isinstance(tenant_ids, str):
             idx_nms = index_name(tenant_ids)
         else:
@@ -488,7 +487,8 @@ class Dealer:
 class SearchEngine:
     """Search engine for RAG pipeline."""
     
-    def __init__(self):
+    def __init__(self, config: Dict[str, Any] = None):
+        self.config = config or {}
         self.qryr = query.FulltextQueryer()
         self.text_cleaner = TextCleaner()
     

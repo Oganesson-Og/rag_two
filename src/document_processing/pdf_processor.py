@@ -1,7 +1,12 @@
+"""
+PDF Processing Module
+------------------
+"""
+
 import logging
 import os
 import random
-
+from typing import Dict, List, Optional, Any, Generator
 import xgboost as xgb
 from io import BytesIO
 import re
@@ -9,6 +14,8 @@ import pdfplumber
 from PIL import Image
 import numpy as np
 from pypdf import PdfReader as pdf2_read
+import torch
+from pathlib import Path
 
 from config import settings
 from ..vision import OCR, Recognizer, LayoutRecognizer, TableStructureRecognizer
@@ -16,7 +23,7 @@ from ..nlp import rag_tokenizer
 from copy import deepcopy
 from huggingface_hub import snapshot_download
 
-
+logger = logging.getLogger(__name__)
 
 def get_project_base_directory(*args):
     global PROJECT_BASE
@@ -45,7 +52,6 @@ class RAGFlowPdfParser:
         self.updown_cnt_mdl = xgb.Booster()
         if not settings.LIGHTEN:
             try:
-                import torch
                 if torch.cuda.is_available():
                     self.updown_cnt_mdl.set_param({"device": "cuda"})
             except Exception:
@@ -129,7 +135,7 @@ class RAGFlowPdfParser:
             True if re.search(
                 r"([。？！；!?;+)）]|[a-z]\.)$",
                 up["text"]) else False,
-            True if re.search(r"[，：‘“、0-9（+-]$", up["text"]) else False,
+            True if re.search(r"[，：'“、0-9（+-]$", up["text"]) else False,
             True if re.search(
                 r"(^.?[/,?;:\]，。；：’”？！》】）-])",
                 down["text"]) else False,
@@ -405,9 +411,9 @@ class RAGFlowPdfParser:
                 bxs.pop(i)
                 continue
             concatting_feats = [
-                b["text"].strip()[-1] in ",;:'\"，、‘“；：-",
+                b["text"].strip()[-1] in ",;:'\"，、'“；：-",
                 len(b["text"].strip()) > 1 and b["text"].strip(
-                )[-2] in ",;:'\"，‘“、；：",
+                )[-2] in ",;:'\"，'“、；：",
                 b_["text"].strip() and b_["text"].strip()[0] in "。；？！?”）),，、：",
             ]
             # features for not concating
@@ -1081,8 +1087,7 @@ class RAGFlowPdfParser:
                                                right *
                                                ZM, min(
                     bottom, self.page_images[pns[0]].size[1])
-                                               ))
-            )
+                                               )))
             if 0 < ii < len(poss) - 1:
                 positions.append((pns[0] + self.page_from, left, right, top, min(
                     bottom, self.page_images[pns[0]].size[1]) / ZM))
@@ -1140,6 +1145,47 @@ class RAGFlowPdfParser:
             poss.append((pn, bx["x0"], bx["x1"], top, min(
                 bott, self.page_images[pn - 1].size[1] / ZM)))
         return poss
+
+    def process_layout(self, page: Any, zoom: float = 1.0) -> Dict[str, Any]:
+        """Process page layout with reduced complexity."""
+        try:
+            layout = self._extract_basic_layout(page, zoom)
+            layout.update(self._process_tables(page, zoom))
+            layout.update(self._process_figures(page, zoom))
+            return layout
+        except Exception as e:
+            self.logger.error(f"Layout processing error: {e}")
+            return {}
+
+    def _extract_basic_layout(self, page: Any, zoom: float) -> Dict[str, Any]:
+        """Extract basic layout elements."""
+        margin = self.config.get('margin', 0.1)
+        return {
+            'text_blocks': self._extract_text_blocks(page, zoom, margin),
+            'headers': self._extract_headers(page, zoom),
+            'footers': self._extract_footers(page, zoom)
+        }
+
+    def _process_tables(self, page: Any, zoom: float) -> Dict[str, Any]:
+        """Process tables in page."""
+        tables = {}
+        for table in self._find_tables(page, zoom):
+            table_id = f"table_{len(tables)}"
+            tables[table_id] = self._extract_table_data(table, zoom)
+        return {'tables': tables}
+
+    def _find_patterns(self, text: str, patterns: List[str]) -> bool:
+        """Use generator for pattern matching."""
+        return any(re.match(pattern, text) for pattern in patterns)
+
+    def _extract_unique_texts(self, blocks: List[Dict]) -> set:
+        """Use set comprehension."""
+        return {block['text'].strip() for block in blocks}
+
+    def _process_blocks(self, blocks: List[Dict]) -> Generator[Dict, None, None]:
+        """Use generator instead of list comprehension."""
+        for i, block in enumerate(blocks):
+            yield self._process_block(block, i)
 
 
 class PlainParser(object):

@@ -18,8 +18,9 @@ __all__ = ['Tokenizer', 'Token', 'TokenType', 'SearchEngine']
 import logging
 import random
 from collections import Counter
-from rag.utils import num_tokens_from_string
-from . import rag_tokenizer
+from ..rag.utils import num_tokens_from_string
+from .tokenizer import UnifiedTokenizer
+rag_tokenizer = UnifiedTokenizer()
 import re
 import copy
 import roman_numbers as r

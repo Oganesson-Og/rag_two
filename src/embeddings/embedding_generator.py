@@ -44,53 +44,45 @@ Created: 2025
 License: MIT
 """ 
 
-from typing import List, Dict, Optional, Union
-import torch
-from transformers import AutoTokenizer, AutoModel
+from typing import List, Dict, Optional, Union, Any
+from pathlib import Path
 import numpy as np
+from numpy.typing import NDArray
+import torch
+from transformers import AutoModel, AutoTokenizer
 from functools import lru_cache
 import logging
 from ..config.settings import EMBEDDING_CONFIG
+from datetime import datetime
+
+Vector = Union[List[float], NDArray[np.float32]]
+BatchInput = Union[str, List[str]]
+EmbeddingOutput = Union[Vector, List[Vector]]
+
+class EmbeddingResult:
+    vector: Vector
+    metadata: Dict[str, Union[str, int, float]]
 
 class EmbeddingGenerator:
-    """Generates embeddings for text using transformer models."""
+    """Generates embeddings for text."""
     
-    def __init__(
-        self,
-        model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
-        device: str = None,
-        max_length: int = 384,
-        batch_size: int = 32
-    ):
-        """Initialize the embedding generator.
-        
-        Args:
-            model_name: Name of the transformer model to use
-            device: Device to run model on ('cuda', 'mps', or 'cpu')
-            max_length: Maximum sequence length
-            batch_size: Batch size for processing
-        """
-        self.model_name = model_name
-        self.max_length = max_length
-        self.batch_size = batch_size
-        
-        # Set device (with Apple Silicon support)
-        if device is None:
-            if torch.cuda.is_available():
-                device = 'cuda'
-            elif torch.backends.mps.is_available():
-                device = 'mps'
-            else:
-                device = 'cpu'
-        self.device = device
-        
-        # Load model and tokenizer
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModel.from_pretrained(model_name).to(self.device)
-        self.model.eval()
-        
-        logging.info(f"Loaded embedding model {model_name} on {device}")
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        self.config = config or EMBEDDING_CONFIG
+        self._initialize_model()
     
+    def _initialize_model(self):
+        """Initialize the embedding model."""
+        from sentence_transformers import SentenceTransformer
+        
+        self.model = SentenceTransformer(
+            self.config["model_name"],
+            cache_folder=self.config["cache_dir"]
+        )
+    
+    async def generate(self, text: str) -> np.ndarray:
+        """Generate embeddings for text."""
+        return self.model.encode([text])[0]
+
     @lru_cache(maxsize=10000)
     def _get_embedding_cached(self, text: str) -> np.ndarray:
         """Get embedding for a single text with caching.
@@ -104,7 +96,7 @@ class EmbeddingGenerator:
         # Tokenize and encode
         inputs = self.tokenizer(
             text,
-            max_length=self.max_length,
+            max_length=384,
             padding=True,
             truncation=True,
             return_tensors='pt'
@@ -125,37 +117,42 @@ class EmbeddingGenerator:
         self,
         texts: Union[str, List[str]],
         show_progress: bool = False
-    ) -> Union[np.ndarray, List[np.ndarray]]:
-        """Generate embeddings for one or more texts.
-        
-        Args:
-            texts: Single text string or list of texts
-            show_progress: Whether to show progress bar
+    ) -> Union[Vector, List[Vector]]:
+        """Generate embeddings for text(s)."""
+        try:
+            if isinstance(texts, str):
+                return self._get_embedding(texts)
             
-        Returns:
-            Single embedding vector or list of vectors
-        """
-        # Handle single text
-        if isinstance(texts, str):
-            return self._get_embedding_cached(texts)
-        
-        # Process in batches
-        all_embeddings = []
-        for i in range(0, len(texts), self.batch_size):
-            batch_texts = texts[i:i + self.batch_size]
+            all_embeddings = []
+            for i in range(0, len(texts), self.batch_size):
+                batch = texts[i:i + self.batch_size]
+                embeddings = [self._get_embedding(text) for text in batch]
+                all_embeddings.extend(embeddings)
+                
+                if show_progress:
+                    self.logger.info(f"Processed {i + len(batch)}/{len(texts)} texts")
+                    
+            return all_embeddings
             
-            # Get embeddings for batch
-            batch_embeddings = [
-                self._get_embedding_cached(text)
-                for text in batch_texts
-            ]
+        except Exception as e:
+            self.logger.error(f"Embedding generation error: {str(e)}")
+            raise
+
+    def _get_embedding(self, text: str) -> Vector:
+        """Generate embedding for single text."""
+        inputs = self.tokenizer(
+            text,
+            max_length=512,
+            padding=True,
+            truncation=True,
+            return_tensors="pt"
+        ).to(self.device)
+
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+            embeddings = outputs.last_hidden_state.mean(dim=1)
             
-            all_embeddings.extend(batch_embeddings)
-            
-            if show_progress:
-                logging.info(f"Processed {i + len(batch_texts)}/{len(texts)} texts")
-        
-        return all_embeddings
+        return embeddings[0].cpu().numpy()
     
     def generate_embeddings_with_metadata(
         self,
@@ -182,6 +179,27 @@ class EmbeddingGenerator:
             doc['embedding'] = embedding.tolist()
             
         return documents
+
+    def generate_embedding(
+        self,
+        text: str
+    ) -> Union[List[float], np.ndarray]:
+        """Generate embedding for text."""
+        pass
+        
+    def batch_generate(
+        self,
+        texts: List[str]
+    ) -> List[Union[List[float], np.ndarray]]:
+        """Generate embeddings for multiple texts."""
+        pass
+
+    def normalize_vector(
+        self,
+        vector: Union[List[float], np.ndarray]
+    ) -> Union[List[float], np.ndarray]:
+        """Normalize vector to unit length."""
+        pass
 
 # Create default instance
 embedding_generator = EmbeddingGenerator(**EMBEDDING_CONFIG) 

@@ -1,134 +1,205 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import List, Union, Dict, Optional, Any, TypeVar, Generic
+from typing_extensions import TypeAlias
 import numpy as np
+from numpy.typing import NDArray
+import logging
+from datetime import datetime
 
 DEFAULT_MATCH_VECTOR_TOPN = 10
 DEFAULT_MATCH_SPARSE_TOPN = 10
-VEC = list | np.ndarray
+VEC = Union[List, np.ndarray]
 
+# Type aliases
+Vector = Union[List[float], NDArray[np.float32]]
+QueryVector = Union[Vector, Dict[str, float]]
+OrderDirection = Union[str, bool]
+ExtraOptions = Optional[Dict[str, Any]]
 
 @dataclass
-class SparseVector:
-    indices: list[int]
-    values: list[float] | list[int] | None = None
+class SparseVectorData:
+    """Sparse vector representation."""
+    indices: List[int]
+    values: List[Union[float, int]]
+    size: Optional[int] = None
 
-    def __post_init__(self):
-        assert (self.values is None) or (len(self.indices) == len(self.values))
-
-    def to_dict_old(self):
-        d = {"indices": self.indices}
-        if self.values is not None:
-            d["values"] = self.values
-        return d
-
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, float]:
         if self.values is None:
-            raise ValueError("SparseVector.values is None")
-        result = {}
-        for i, v in zip(self.indices, self.values):
-            result[str(i)] = v
-        return result
+            raise ValueError("values cannot be None")
+        return {str(i): v for i, v in zip(self.indices, self.values)}
 
-    @staticmethod
-    def from_dict(d):
-        return SparseVector(d["indices"], d.get("values"))
-
-    def __str__(self):
-        return f"SparseVector(indices={self.indices}{'' if self.values is None else f', values={self.values}'})"
-
-    def __repr__(self):
-        return str(self)
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> 'SparseVectorData':
+        indices = [int(k) for k in d.keys()]
+        values = list(d.values())
+        return cls(indices=indices, values=values)
 
 
-class MatchTextExpr(ABC):
+class MatchTextExpr:
+    """Text matching expression."""
+    def __init__(self, field: str, query: str):
+        self.field = field
+        self.query = query
+
+
+# First define the base class
+class MatchTensorExpr(ABC):
+    """Base class for tensor matching expressions."""
+    
     def __init__(
         self,
-        fields: list[str],
-        matching_text: str,
-        topn: int,
-        extra_options: dict = dict(),
-    ):
-        self.fields = fields
-        self.matching_text = matching_text
-        self.topn = topn
-        self.extra_options = extra_options
+        field_name: str,
+        tensor: Vector,
+        extra_option: ExtraOptions = None
+    ) -> None:
+        self.field_name = field_name
+        self.tensor = tensor
+        self.extra_option = extra_option or {}
+        self.logger = logging.getLogger(__name__)
 
 
-class MatchDenseExpr(ABC):
+# Then define the derived class
+class MatchDenseExpr(MatchTensorExpr):
+    """Dense vector matching expression."""
     def __init__(
         self,
-        vector_column_name: str,
-        embedding_data: VEC,
-        embedding_data_type: str,
-        distance_type: str,
-        topn: int = DEFAULT_MATCH_VECTOR_TOPN,
-        extra_options: dict = dict(),
-    ):
-        self.vector_column_name = vector_column_name
-        self.embedding_data = embedding_data
-        self.embedding_data_type = embedding_data_type
-        self.distance_type = distance_type
-        self.topn = topn
-        self.extra_options = extra_options
+        field_name: str,
+        tensor: Vector,
+        extra_option: ExtraOptions = None,
+        top_k: int = 10
+    ) -> None:
+        super().__init__(field_name, tensor, extra_option)
+        self.top_k = top_k
 
 
 class MatchSparseExpr(ABC):
+    """Sparse vector matching expression."""
     def __init__(
         self,
-        vector_column_name: str,
-        sparse_data: SparseVector | dict,
-        distance_type: str,
-        topn: int,
-        opt_params: dict | None = None,
+        field: str,
+        sparse_data: SparseVectorData,
+        top_k: int = 10
     ):
-        self.vector_column_name = vector_column_name
+        self.field = field
         self.sparse_data = sparse_data
-        self.distance_type = distance_type
-        self.topn = topn
-        self.opt_params = opt_params
+        self.top_k = top_k
 
 
-class MatchTensorExpr(ABC):
+class FusionExpr:
+    """Expression for fusing multiple search results."""
+    
     def __init__(
         self,
-        column_name: str,
-        query_data: VEC,
-        query_data_type: str,
-        topn: int,
-        extra_option: dict | None = None,
-    ):
-        self.column_name = column_name
-        self.query_data = query_data
-        self.query_data_type = query_data_type
-        self.topn = topn
-        self.extra_option = extra_option
+        match_exprs: List[MatchTensorExpr],
+        weights: Optional[List[float]] = None
+    ) -> None:
+        self.match_exprs = match_exprs
+        self.weights = weights or [1.0] * len(match_exprs)
+        self.logger = logging.getLogger(__name__)
 
 
-class FusionExpr(ABC):
-    def __init__(self, method: str, topn: int, fusion_params: dict | None = None):
-        self.method = method
-        self.topn = topn
-        self.fusion_params = fusion_params
+class OrderByExpr:
+    """Expression for ordering search results."""
+    
+    def __init__(
+        self,
+        field_name: str,
+        ascending: bool = True
+    ) -> None:
+        self.field_name = field_name
+        self.ascending = ascending
+        self.logger = logging.getLogger(__name__)
 
 
-MatchExpr = MatchTextExpr | MatchDenseExpr | MatchSparseExpr | MatchTensorExpr | FusionExpr
-
-class OrderByExpr(ABC):
-    def __init__(self):
-        self.fields = list()
-    def asc(self, field: str):
-        self.fields.append((field, 0))
-        return self
-    def desc(self, field: str):
-        self.fields.append((field, 1))
-        return self
-    def fields(self):
-        return self.fields
+# Combined match expression type
+MatchExpr: TypeAlias = Union[
+    MatchTextExpr,
+    MatchDenseExpr,
+    MatchSparseExpr,
+    FusionExpr
+]
 
 class DocStoreConnection(ABC):
-    """
-    Database operations
-    """
+    """Abstract base class for document store connections."""
+    
+    @abstractmethod
+    def search(
+        self,
+        match_expr: MatchExpr,
+        order_by: Optional[OrderByExpr] = None,
+        offset: int = 0,
+        limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """Search documents using match expression."""
+        pass
+
+    @abstractmethod
+    def insert(
+        self,
+        docs: List[Dict[str, Any]],
+        knowledgebase_id: Optional[str] = None
+    ) -> List[str]:
+        """Insert documents into store."""
+        pass
+
+    @abstractmethod
+    def update(
+        self,
+        doc_ids: List[str],
+        updates: Dict[str, Any]
+    ) -> int:
+        """Update documents by ID."""
+        pass
+
+    @abstractmethod
+    def delete(self, doc_ids: List[str]) -> int:
+        """Delete documents by ID."""
+        pass
+
+    @abstractmethod
+    def get_by_ids(
+        self,
+        doc_ids: List[str]
+    ) -> List[Dict[str, Any]]:
+        """Get documents by ID."""
+        pass
+
+    def store_vector(
+        self,
+        vector: Union[List[float], np.ndarray],
+        metadata: Optional[Dict] = None
+    ) -> str:
+        """Store vector in document store."""
+        raise NotImplementedError("Not implemented")
+        
+    def get_vector(
+        self,
+        id: str
+    ) -> Optional[Union[List[float], np.ndarray]]:
+        """Retrieve vector from document store."""
+        raise NotImplementedError("Not implemented")
+        
+    def search_vectors(
+        self,
+        query_vector: Union[List[float], np.ndarray],
+        top_k: int = 10,
+        filter_expr: Optional[Dict] = None
+    ) -> List[Dict]:
+        """Search for similar vectors."""
+        raise NotImplementedError("Not implemented")
+        
+    def delete_vector(self, id: str) -> bool:
+        """Delete vector from store."""
+        raise NotImplementedError("Not implemented")
+        
+    def update_metadata(
+        self,
+        id: str,
+        metadata: Dict
+    ) -> bool:
+        """Update vector metadata."""
+        raise NotImplementedError("Not implemented")
 
     @abstractmethod
     def dbType(self) -> str:
@@ -175,29 +246,26 @@ class DocStoreConnection(ABC):
 
     @abstractmethod
     def search(
-        self, selectFields: list[str],
-            highlightFields: list[str],
-            condition: dict,
-            matchExprs: list[MatchExpr],
-            orderBy: OrderByExpr,
-            offset: int,
-            limit: int,
-            indexNames: str|list[str],
-            knowledgebaseIds: list[str],
-            aggFields: list[str] = [],
-            rank_feature: dict | None = None
-    ):
-        """
-        Search with given conjunctive equivalent filtering condition and return all fields of matched documents
-        """
-        raise NotImplementedError("Not implemented")
+        self,
+        select_fields: List[str],
+        highlight_fields: List[str],
+        condition: Dict[str, Any],
+        match_exprs: List[MatchExpr],
+        order_by: OrderByExpr,
+        offset: int,
+        limit: int,
+        index_names: Union[str, List[str]],
+        knowledgebase_ids: List[str],
+        agg_fields: Optional[List[str]] = None,
+        rank_feature: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Search with given conditions."""
+        raise NotImplementedError
 
     @abstractmethod
-    def get(self, chunkId: str, indexName: str, knowledgebaseIds: list[str]) -> dict | None:
-        """
-        Get single chunk with given id
-        """
-        raise NotImplementedError("Not implemented")
+    def get(self, chunkId: str, indexName: str, knowledgebaseIds: List[str]) -> Optional[Dict]:
+        """Get document by chunk ID."""
+        pass
 
     @abstractmethod
     def insert(self, rows: list[dict], indexName: str, knowledgebaseId: str = None) -> list[str]:
@@ -248,8 +316,6 @@ class DocStoreConnection(ABC):
     SQL
     """
     @abstractmethod
-    def sql(sql: str, fetch_size: int, format: str):
-        """
-        Run the sql generated by text-to-sql
-        """
-        raise NotImplementedError("Not implemented")
+    def sql(self, sql: str, fetch_size: int, format: str) -> Dict[str, Any]:
+        """Run SQL query."""
+        raise NotImplementedError

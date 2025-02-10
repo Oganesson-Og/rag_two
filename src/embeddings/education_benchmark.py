@@ -70,13 +70,19 @@ Created: 2025
 License: MIT
 """ 
 
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union, Any
 import numpy as np
+from numpy.typing import NDArray
 from .benchmark import EmbeddingBenchmark
 from ..config.domain_config import EDUCATION_DOMAINS
 import json
 import logging
 from pathlib import Path
+from datetime import datetime
+
+# Type aliases
+Vector = Union[List[float], NDArray[np.float32]]
+BenchmarkResult = Dict[str, Any]
 
 class EducationBenchmark(EmbeddingBenchmark):
     """Benchmark embedding models for educational content."""
@@ -85,11 +91,14 @@ class EducationBenchmark(EmbeddingBenchmark):
         self,
         subject: str,
         level: str,
-        test_data_path: Optional[str] = None
+        test_data_path: Optional[str] = None,
+        config: Optional[Dict[str, Any]] = None
     ):
         self.subject = subject
         self.level = level
         super().__init__(test_data_path)
+        self.config = config or {}
+        self.logger = logging.getLogger(__name__)
         
         # Load subject-specific test cases
         self.subject_tests = self._load_subject_tests()
@@ -213,4 +222,42 @@ class EducationBenchmark(EmbeddingBenchmark):
                 print(f"  Std:  {edu_metrics['hierarchy_preservation']['std']:.3f}")
                 
                 print(f"\nSubject Relevance: {edu_metrics['subject_relevance']:.3f}")
+
+    def run_benchmark(
+        self,
+        embeddings: List[Vector],
+        options: Optional[Dict[str, bool]] = None
+    ) -> BenchmarkResult:
+        """Run benchmarking tests."""
+        try:
+            options = options or {}
+            
+            results = {
+                'subject': self.subject,
+                'level': self.level,
+                'timestamp': datetime.now().isoformat(),
+                'metrics': {}
+            }
+            
+            if options.get('similarity', True):
+                results['metrics']['similarity'] = self._test_similarity(embeddings)
+                
+            if options.get('clustering', True):
+                results['metrics']['clustering'] = self._test_clustering(embeddings)
+                
+            return results
+            
+        except Exception as e:
+            self.logger.error(f"Benchmark error: {str(e)}")
+            raise
+
+    def _test_similarity(self, embeddings: List[Vector]) -> Dict[str, float]:
+        """Test embedding similarity."""
+        # Implement similarity testing
+        return {'score': 0.0}
+
+    def _test_clustering(self, embeddings: List[Vector]) -> Dict[str, float]:
+        """Test embedding clustering."""
+        # Implement clustering testing
+        return {'score': 0.0}
 

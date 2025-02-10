@@ -1,5 +1,5 @@
 """
-Document Preprocessor Module
+Document Preprocessing Module
 -------------------------
 
 Advanced document preprocessing system for standardizing and enhancing
@@ -50,8 +50,81 @@ from ftfy import fix_text
 import magic
 from bs4 import BeautifulSoup
 import logging
-from typing import Dict, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 from pathlib import Path
+import numpy as np
+from numpy.typing import NDArray
+from datetime import datetime
+
+class Preprocessor:
+    """Document preprocessing pipeline."""
+    
+    def __init__(self) -> None:
+        self.logger = logging.getLogger(__name__)
+
+    def preprocess_text(
+        self,
+        text: str,
+        options: Optional[Dict[str, bool]] = None
+    ) -> str:
+        """Preprocess text content."""
+        try:
+            options = options or {}
+            
+            # Basic cleaning
+            text = text.strip()
+            
+            # Remove extra whitespace
+            if options.get('remove_extra_whitespace', True):
+                text = ' '.join(text.split())
+                
+            # Remove special characters
+            if options.get('remove_special_chars', False):
+                text = ''.join(c for c in text if c.isalnum() or c.isspace())
+                
+            return text
+            
+        except Exception as e:
+            self.logger.error(f"Text preprocessing error: {str(e)}")
+            raise
+
+    def preprocess_image(
+        self,
+        image: NDArray[np.uint8],
+        options: Optional[Dict[str, Any]] = None
+    ) -> NDArray[np.uint8]:
+        """Preprocess image content."""
+        try:
+            options = options or {}
+            
+            # Ensure correct dtype
+            image = image.astype(np.uint8)
+            
+            # Basic preprocessing
+            if options.get('normalize', True):
+                image = image / 255.0
+                
+            if options.get('grayscale', False):
+                if len(image.shape) == 3:
+                    image = np.mean(image, axis=2)
+                    
+            return image.astype(np.uint8)
+            
+        except Exception as e:
+            self.logger.error(f"Image preprocessing error: {str(e)}")
+            raise
+
+    def get_metadata(self) -> Dict[str, Any]:
+        """Get preprocessor metadata."""
+        return {
+            'preprocessor_version': '1.0.0',
+            'timestamp': datetime.now().isoformat(),
+            'supported_operations': [
+                'text_cleaning',
+                'image_normalization',
+                'grayscale_conversion'
+            ]
+        }
 
 class DocumentPreprocessor:
     """Handles document preprocessing tasks."""
