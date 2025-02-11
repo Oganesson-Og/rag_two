@@ -169,4 +169,41 @@ umap-learn>=0.5.4
 
 # Documentation
 sphinx>=7.1.0
-sphinx-rtd-theme>=1.3.0 
+sphinx-rtd-theme>=1.3.0
+
+# Core RAG Dependencies
+openai>=1.0.0
+nltk>=3.8.1
+rank-bm25>=0.2.2
+numpy>=1.24.0
+Pillow>=10.0.0
+
+# Document Processing
+pytesseract>=0.3.10
+pdf2image>=1.16.3
+python-docx>=0.8.11
+openpyxl>=3.1.2
+
+# Machine Learning & Computer Vision
+torch>=2.0.0
+transformers>=4.35.0
+scikit-image>=0.21.0
+opencv-python>=4.8.0
+detectron2>=0.6  # Note: might need special installation
+
+# Chemical Structure Analysis
+rdkit>=2023.3  # Note: might need special installation
+
+# Caching & Data Management
+redis>=5.0.0
+aioredis>=2.0.0
+faiss-cpu>=1.7.4  # Use faiss-gpu for GPU support
+
+# Async Support
+asyncio>=3.4.3
+aiohttp>=3.9.0
+
+# Utilities
+pydantic>=2.5.0
+python-dotenv>=1.0.0
+typing-extensions>=4.8.0 

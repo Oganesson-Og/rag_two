@@ -160,4 +160,16 @@ class ConfigManager:
         """Update configuration with new values."""
         config_dict = self.config.dict()
         config_dict = self._deep_merge(config_dict, updates)
-        self.config = RAGConfig(**config_dict) 
+        self.config = RAGConfig(**config_dict)
+
+llm_config = {
+    'api_key': 'your-openai-api-key',
+    'organization': 'your-org-id',  # Optional
+    'model_name': 'gpt-4',
+    'temperature': 0.7,
+    'max_tokens': 1000,
+    'top_p': 1.0,
+    'frequency_penalty': 0.0,
+    'presence_penalty': 0.0,
+    'system_prompt': 'You are a helpful assistant...'
+} 

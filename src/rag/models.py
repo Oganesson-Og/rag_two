@@ -57,7 +57,7 @@ Performance Considerations:
 
 Author: Keith Satuku
 Version: 1.0.0
-Created: 2024
+Created: 2025
 License: MIT
 """
 
@@ -78,6 +78,7 @@ class ProcessingStage(str, Enum):
     INDEXED = "indexed"
     RETRIEVED = "retrieved"
     GENERATED = "generated"
+    ANALYZED = "analyzed"
 
 class ContentModality(str, Enum):
     """Supported content modalities with metadata requirements."""

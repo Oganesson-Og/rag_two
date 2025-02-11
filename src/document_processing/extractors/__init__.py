@@ -9,10 +9,11 @@ Available Extractors:
 - DocxExtractor: Word document processing
 - ExcelExtractor: Excel workbook processing
 - CSVExtractor: CSV file processing
+- TextExtractor: Plain text processing
 - BaseExtractor: Abstract base class
 
 Usage:
-    from document_processing.extractors import PDFExtractor
+    from document_processing.extractors import PDFExtractor, TextExtractor
     
     extractor = PDFExtractor()
     result = extractor.extract('document.pdf')
@@ -27,6 +28,7 @@ from .base import BaseExtractor, ExtractorResult, DocumentContent
 from .pdf import PDFExtractor
 from .docx import DocxExtractor
 from .spreadsheet import ExcelExtractor, CSVExtractor
+from .text import TextExtractor
 
 __all__ = [
     'BaseExtractor',
@@ -34,6 +36,7 @@ __all__ = [
     'DocxExtractor',
     'ExcelExtractor',
     'CSVExtractor',
+    'TextExtractor',
     'ExtractorResult',
     'DocumentContent'
 ] 
