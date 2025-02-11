@@ -1,3 +1,74 @@
+"""
+Vision Operators Module
+---------------------
+
+Collection of image processing and transformation operators for document analysis
+pipeline. Provides core functionality for image preprocessing, format conversion,
+and data transformation.
+
+Key Features:
+- Image decoding and encoding
+- Channel format conversion
+- Image standardization
+- Dimension transformations
+- Padding operations
+- Text feature extraction
+- Batch processing support
+
+Technical Components:
+1. Image Processing:
+   - DecodeImage: Image binary to array conversion
+   - StandardizeImage: Image normalization
+   - ToCHWImage: Channel order transformation
+   - Pad: Image padding with configurable strategies
+   
+2. Text Processing:
+   - Fasttext: Text feature extraction
+   - KeepKeys: Data filtering
+   
+3. Detection Processing:
+   - DetResizeForTest: Detection-specific resizing
+   - E2EResizeForTest: End-to-end model resizing
+   - SRResize: Super-resolution resize
+   - GrayImageChannelFormat: Grayscale conversion
+
+Dependencies:
+- opencv-python>=4.8.0
+- numpy>=1.24.0
+- Pillow>=9.5.0
+- fasttext>=0.9.2
+
+Example Usage:
+    # Basic image decoding
+    decoder = DecodeImage(img_mode='RGB')
+    image_data = decoder({'image': binary_image})
+    
+    # Channel transformation
+    to_chw = ToCHWImage()
+    chw_data = to_chw({'image': hwc_image})
+    
+    # Padding
+    padder = Pad(size_div=32)
+    padded_data = padder({'image': input_image})
+    
+    # Complete pipeline
+    def process_image(binary_image):
+        ops = [
+            DecodeImage(img_mode='RGB'),
+            StandardizeImage(),
+            ToCHWImage(),
+            Pad(size_div=32)
+        ]
+        data = {'image': binary_image}
+        for op in ops:
+            data = op(data)
+        return data
+
+Author: InfiniFlow Team
+Version: 1.0.0
+License: MIT
+"""
+
 import logging
 import sys
 import six

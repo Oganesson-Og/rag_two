@@ -1,3 +1,73 @@
+"""
+Vision Post-Processing Module
+---------------------------
+
+Advanced post-processing utilities for vision model outputs, specializing in
+text detection refinement and recognition result decoding.
+
+Key Features:
+- Differentiable Binarization (DB) post-processing
+- CTC label decoding
+- Polygon generation from bitmaps
+- Box scoring and filtering
+- Contour processing
+- Text boundary refinement
+
+Technical Components:
+1. DB Post-Processing:
+   - Bitmap to polygon conversion
+   - Box score calculation
+   - Contour approximation
+   - Area-based filtering
+   - Unclip operation for text boxes
+   
+2. CTC Decoding:
+   - Label sequence decoding
+   - Confidence score calculation
+   - Special character handling
+   - Batch processing support
+   - Language-specific processing
+
+Dependencies:
+- opencv-python>=4.8.0
+- numpy>=1.24.0
+- shapely>=2.0.0
+- pyclipper>=1.3.0
+
+Example Usage:
+    # DB post-processing
+    post_processor = DBPostProcess(
+        thresh=0.3,
+        box_thresh=0.7,
+        max_candidates=1000,
+        unclip_ratio=2.0
+    )
+    boxes = post_processor(pred_maps, shape_list)
+    
+    # CTC decoding
+    decoder = CTCLabelDecode(character_dict_path='dict.txt')
+    text_results = decoder(pred_labels)
+    
+    # Complete pipeline
+    def process_detection(pred_maps, shape_list):
+        post_processor = DBPostProcess()
+        boxes = post_processor(pred_maps, shape_list)
+        return boxes
+
+Processing Options:
+- thresh: Confidence threshold
+- box_thresh: Box filtering threshold
+- max_candidates: Maximum boxes to process
+- unclip_ratio: Text boundary expansion ratio
+- use_dilation: Boolean for dilation operation
+- score_mode: 'fast' or 'slow' scoring
+
+Author: InfiniFlow Team
+Version: 1.0.0
+License: MIT
+"""
+
+
 import copy
 import re
 import numpy as np

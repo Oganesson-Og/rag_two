@@ -1,3 +1,61 @@
+"""
+Layout Recognition Testing Module
+------------------------------
+
+Testing and evaluation utilities for document layout recognition and
+table structure analysis, with support for multiple recognition modes.
+
+Key Features:
+- Layout recognition testing
+- Table structure analysis
+- HTML table generation
+- Result visualization
+- Performance evaluation
+- Batch processing
+
+Technical Components:
+1. Recognition Modes:
+   - Layout analysis
+   - Table structure recognition
+   - OCR integration
+   - HTML generation
+   
+2. Processing Pipeline:
+   - Image preprocessing
+   - Model inference
+   - Result post-processing
+   - Output generation
+
+Dependencies:
+- numpy>=1.24.0
+- logging>=0.5.1.2
+- argparse>=1.4.0
+- deepdoc.vision
+
+Example Usage:
+    # Command line usage
+    python t_recognizer.py --inputs images/ --mode layout
+    
+    # Layout recognition
+    recognizer = LayoutRecognizer("layout")
+    results = recognizer.forward(images)
+    
+    # Table structure analysis
+    tsr = TableStructureRecognizer()
+    tables = tsr(images)
+    html = get_table_html(image, tables, ocr)
+
+CLI Arguments:
+- inputs: Input image directory
+- output_dir: Results directory
+- threshold: Detection confidence threshold
+- mode: Recognition mode (layout/tsr)
+
+Author: InfiniFlow Team
+Version: 1.0.0
+License: MIT
+"""
+
 import logging
 import os
 import sys

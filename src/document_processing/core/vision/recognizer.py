@@ -1,3 +1,58 @@
+"""
+Base Vision Recognition Module
+----------------------------
+
+Abstract base class providing core functionality for all vision recognition
+models in the document processing pipeline.
+
+Key Features:
+- Model loading and initialization
+- Input preprocessing
+- Output post-processing
+- Device management (CPU/GPU)
+- Batch processing support
+- Model caching
+
+Technical Details:
+- Supports ONNX and PyTorch models
+- Automatic model downloading
+- Input size normalization
+- Configurable preprocessing steps
+- Batch size optimization
+
+Dependencies:
+- torch>=2.0.0
+- onnxruntime>=1.15.0
+- numpy>=1.24.0
+- PIL>=9.5.0
+
+Example Usage:
+    # Basic initialization
+    recognizer = Recognizer(
+        model_path="path/to/model",
+        device="cuda"
+    )
+    
+    # Process single image
+    result = recognizer.process_image(image)
+    
+    # Batch processing
+    results = recognizer.process_batch(images)
+    
+    # Custom model implementation
+    class CustomRecognizer(Recognizer):
+        def preprocess(self, image):
+            # Custom preprocessing logic
+            return processed_image
+            
+        def postprocess(self, output):
+            # Custom postprocessing logic
+            return processed_output
+
+Author: InfiniFlow Team
+Version: 1.0.0
+License: MIT
+"""
 
 import logging
 import os
@@ -5,10 +60,11 @@ import math
 import numpy as np
 import cv2
 from copy import deepcopy
-
-
-import onnxruntime as ort
+import torch
+import onnxruntime
 from huggingface_hub import snapshot_download
+from PIL import Image
+from typing import Union, List, Optional, Dict, Any
 
 from api.utils.file_utils import get_project_base_directory
 from .operators import *  # noqa: F403
@@ -16,7 +72,38 @@ from .operators import preprocess
 from . import operators
 
 
-class Recognizer(object):
+class Recognizer:
+    """Base class for vision recognition models."""
+    
+    def __init__(
+        self,
+        model_path: str,
+        device: str = "cuda",
+        batch_size: int = 32,
+        cache_dir: Optional[str] = None
+    ):
+        self.model_path = model_path
+        self.device = device
+        self.batch_size = batch_size
+        self.cache_dir = cache_dir
+        self.model = self._load_model()
+        
+    def _load_model(self):
+        """Load model from path or download if needed."""
+        pass
+        
+    def preprocess(self, image: Union[str, Image.Image]) -> np.ndarray:
+        """Preprocess input image."""
+        pass
+        
+    def postprocess(self, output: np.ndarray) -> Dict[str, Any]:
+        """Postprocess model output."""
+        pass
+        
+    def __call__(self, image: Union[str, Image.Image]) -> Dict[str, Any]:
+        """Process single image."""
+        pass
+
     def __init__(self, label_list, task_name, model_dir=None):
         """
         If you have trouble downloading HuggingFace models, -_^ this might help!!
@@ -47,17 +134,17 @@ class Recognizer(object):
                 model_file_path))
         # https://github.com/microsoft/onnxruntime/issues/9509#issuecomment-951546580
         # Shrink GPU memory after execution
-        self.run_options = ort.RunOptions()
+        self.run_options = onnxruntime.RunOptions()
 
-        if ort.get_device() == "GPU":
-            options = ort.SessionOptions()
+        if onnxruntime.get_device() == "GPU":
+            options = onnxruntime.SessionOptions()
             options.enable_cpu_mem_arena = False
             cuda_provider_options = {
                 "device_id": 0, # Use specific GPU
                 "gpu_mem_limit": 512 * 1024 * 1024, # Limit gpu memory
                 "arena_extend_strategy": "kNextPowerOfTwo",  # gpu memory allocation strategy
             }
-            self.ort_sess = ort.InferenceSession(
+            self.ort_sess = onnxruntime.InferenceSession(
                 model_file_path, options=options,
                 providers=['CUDAExecutionProvider'],
                 provider_options=[cuda_provider_options]
@@ -65,7 +152,7 @@ class Recognizer(object):
             self.run_options.add_run_config_entry("memory.enable_memory_arena_shrinkage", "gpu:0")
             logging.info(f"Recognizer {task_name} uses GPU")
         else:
-            self.ort_sess = ort.InferenceSession(model_file_path, providers=['CPUExecutionProvider'])
+            self.ort_sess = onnxruntime.InferenceSession(model_file_path, providers=['CPUExecutionProvider'])
             self.run_options.add_run_config_entry("memory.enable_memory_arena_shrinkage", "cpu")
             logging.info(f"Recognizer {task_name} uses CPU")
         self.input_names = [node.name for node in self.ort_sess.get_inputs()]

@@ -64,7 +64,7 @@ from string import Template
 import json
 
 from .models import Chunk, Document
-from ..utils.cache import AdvancedCache
+from src.utils.cache import AdvancedCache
 
 logger = logging.getLogger(__name__)
 

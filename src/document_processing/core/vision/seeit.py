@@ -1,3 +1,65 @@
+"""
+Vision Visualization Module
+-------------------------
+
+Visualization utilities for document analysis results, providing tools for
+drawing bounding boxes, labels, and confidence scores on images.
+
+Key Features:
+- Bounding box visualization
+- Label rendering
+- Confidence score display
+- Color-coded class visualization
+- Batch result saving
+- Custom drawing styles
+
+Technical Components:
+1. Drawing Functions:
+   - Box drawing with customizable styles
+   - Text label rendering
+   - Color mapping for classes
+   - Image saving utilities
+   
+2. Visualization Options:
+   - Thickness calculation
+   - Color generation
+   - Text size handling
+   - Output formatting
+
+Dependencies:
+- PIL>=9.5.0
+- numpy>=1.24.0
+- logging>=0.5.1.2
+
+Example Usage:
+    # Basic result visualization
+    save_results(images, results, labels, output_dir='output/')
+    
+    # Custom visualization
+    im = draw_box(
+        image,
+        detection_result,
+        labels,
+        threshold=0.5
+    )
+    
+    # Batch processing
+    def visualize_batch(images, results, labels):
+        for idx, (image, result) in enumerate(zip(images, results)):
+            im = draw_box(image, result, labels)
+            im.save(f'output_{idx}.jpg')
+
+Visualization Options:
+- threshold: Confidence threshold for visualization
+- draw_thickness: Line thickness
+- color_map: Class-to-color mapping
+- output_quality: JPEG quality for saved images
+
+Author: InfiniFlow Team
+Version: 1.0.0
+License: MIT
+"""
+
 import logging
 import os
 import PIL

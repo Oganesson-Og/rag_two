@@ -1,3 +1,69 @@
+"""
+Table Structure Recognition Module
+-------------------------------
+
+Advanced table structure analysis system for detecting and understanding
+complex table layouts in document images.
+
+Key Features:
+- Table detection and recognition
+- Cell structure analysis
+- Header/row/column identification
+- Spanning cell detection
+- HTML table generation
+- Cross-page table handling
+
+Technical Components:
+1. Structure Analysis:
+   - Table boundary detection
+   - Cell segmentation
+   - Row/column alignment
+   - Header identification
+   - Spanning cell analysis
+   
+2. Text Processing:
+   - OCR integration
+   - Text block typing
+   - Caption detection
+   - Language support
+   - Date/number recognition
+
+Dependencies:
+- numpy>=1.24.0
+- huggingface_hub>=0.19.0
+- spacy>=3.7.2
+- logging>=0.5.1.2
+
+Example Usage:
+    # Basic table recognition
+    recognizer = TableStructureRecognizer()
+    tables = recognizer(images)
+    
+    # HTML generation
+    html = TableStructureRecognizer.construct_table(
+        boxes,
+        is_english=False,
+        html=True
+    )
+    
+    # Advanced processing
+    results = recognizer(
+        images,
+        thr=0.2,
+        preserve_structure=True
+    )
+
+Processing Options:
+- threshold: Detection confidence
+- is_english: Language flag
+- html: HTML output format
+- preserve_structure: Maintain table structure
+
+Author: InfiniFlow Team
+Version: 1.0.0
+License: MIT
+"""
+
 import logging
 import os
 import re

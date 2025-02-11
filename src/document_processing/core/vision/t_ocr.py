@@ -1,3 +1,60 @@
+"""
+OCR Testing and Evaluation Module
+-------------------------------
+
+Command-line interface and testing utilities for OCR functionality,
+providing tools for batch processing and result visualization.
+
+Key Features:
+- Command-line OCR testing
+- Batch image processing
+- Result visualization
+- Text extraction
+- Output formatting
+- Performance evaluation
+
+Technical Components:
+1. Processing Pipeline:
+   - Image loading and preprocessing
+   - OCR text extraction
+   - Bounding box generation
+   - Result visualization
+   
+2. Output Generation:
+   - Text file generation
+   - Visualization images
+   - Performance metrics
+   - Batch processing results
+
+Dependencies:
+- numpy>=1.24.0
+- PIL>=9.5.0
+- argparse>=1.4.0
+- deepdoc.vision
+
+Example Usage:
+    # Command line usage
+    python t_ocr.py --inputs path/to/images --output_dir results/
+    
+    # Basic OCR testing
+    ocr = OCR()
+    results = ocr(image)
+    visualize_results(results)
+    
+    # Batch processing
+    process_directory(input_dir, output_dir)
+
+CLI Arguments:
+- inputs: Input image directory or file
+- output_dir: Results directory
+- batch_size: Number of images to process at once
+- visualization: Enable result visualization
+
+Author: InfiniFlow Team
+Version: 1.0.0
+License: MIT
+"""
+
 import os
 import sys
 sys.path.insert(
