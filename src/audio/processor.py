@@ -83,6 +83,8 @@ from numpy.typing import NDArray
 import soundfile as sf
 import time
 from nltk.corpus import stopwords
+import tempfile
+from openai import OpenAI
 
 # Type aliases
 AudioData = NDArray[np.float32]
@@ -377,11 +379,118 @@ class AudioProcessor:
 
     def _transcribe_audio(
         self,
-        audio: AudioArray
+        audio: AudioArray,
+        system_prompt: Optional[str] = None,
+        timestamp_granularity: Optional[List[str]] = None,
+        post_process: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Transcribe audio using OpenAI's Whisper API with enhanced features.
+        
+        Args:
+            audio: Audio data array
+            system_prompt: Optional prompt for post-processing corrections
+            timestamp_granularity: List of timestamp detail levels ("segment" and/or "word")
+            post_process: Whether to apply GPT-4 post-processing for accuracy
+        
+        Returns:
+            Dictionary containing transcription results and metadata
+        """
+        try:
+            # Save audio array to temporary file
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=True) as temp_audio:
+                sf.write(temp_audio.name, audio, self.whisper_model.sample_rate)
+                
+                # Initialize OpenAI client
+                client = OpenAI()
+                
+                # Prepare transcription parameters
+                transcription_params = {
+                    "model": "whisper-1",
+                    "file": open(temp_audio.name, "rb"),
+                }
+                
+                # Add timestamp granularity if specified
+                if timestamp_granularity:
+                    transcription_params.update({
+                        "response_format": "verbose_json",
+                        "timestamp_granularities": timestamp_granularity
+                    })
+                
+                # Get initial transcription
+                transcription = client.audio.transcriptions.create(**transcription_params)
+                
+                # Apply post-processing if requested
+                if post_process and system_prompt:
+                    corrected_text = self._post_process_transcription(
+                        transcription.text if hasattr(transcription, 'text') else transcription['text'],
+                        system_prompt
+                    )
+                else:
+                    corrected_text = transcription.text if hasattr(transcription, 'text') else transcription['text']
+                
+                # Prepare response
+                result = {
+                    "text": corrected_text,
+                    "original_text": transcription.text if hasattr(transcription, 'text') else transcription['text'],
+                    "model_used": "whisper-1",
+                    "timestamp_granularity": timestamp_granularity,
+                    "post_processed": post_process
+                }
+                
+                # Add timestamps if available
+                if timestamp_granularity:
+                    if "word" in timestamp_granularity:
+                        result["word_timestamps"] = transcription.words
+                    if "segment" in timestamp_granularity:
+                        result["segments"] = transcription.segments
+                
+                return result
+                
+        except Exception as e:
+            self.logger.error(f"Transcription error: {str(e)}", exc_info=True)
+            raise
+
+    def _post_process_transcription(
+        self,
+        text: str,
+        system_prompt: str,
+        temperature: float = 0
     ) -> str:
-        """Transcribe audio to text."""
-        # Implement transcription
-        return ""
+        """
+        Post-process transcription using GPT-4 for improved accuracy.
+        
+        Args:
+            text: Original transcription text
+            system_prompt: System prompt for GPT-4
+            temperature: Temperature for GPT-4 response (0 for most deterministic)
+        
+        Returns:
+            Corrected transcription text
+        """
+        try:
+            client = OpenAI()
+            
+            response = client.chat.completions.create(
+                model="gpt-4",
+                temperature=temperature,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": system_prompt
+                    },
+                    {
+                        "role": "user",
+                        "content": text
+                    }
+                ]
+            )
+            
+            return response.choices[0].message.content
+            
+        except Exception as e:
+            self.logger.warning(f"Post-processing failed: {str(e)}. Using original text.")
+            return text
 
     def load_audio(self, file_path: Path) -> Tuple[np.ndarray, int]:
         """Load audio file and return data and sample rate."""
