@@ -33,14 +33,67 @@ from pathlib import Path
 from typing import List, Dict, Any, Set
 import argparse
 from datetime import datetime
+from tqdm import tqdm
+import sys
+import time
 
 from src.rag.pipeline import Pipeline
 from src.rag.models import Document, ContentModality, ProcessingStage
 from src.config.rag_config import ConfigManager
 from ..document_processing.extractors.text import TextExtractor
 from ..document_processing.extractors.pdf import PDFExtractor
+from ..document_processing.extractors.docx import DocxExtractor
 
 logger = logging.getLogger(__name__)
+
+class ProgressTracker:
+    """Tracks and displays ingestion progress."""
+    
+    def __init__(self, total_files: int):
+        self.total_files = total_files
+        self.processed_files = 0
+        self.failed_files = 0
+        self.start_time = time.time()
+        
+        # Initialize progress bar
+        self.pbar = tqdm(
+            total=total_files,
+            desc="Ingesting documents",
+            unit="file",
+            file=sys.stdout
+        )
+        
+    def update(self, success: bool = True):
+        """Update progress tracking."""
+        self.processed_files += 1
+        if not success:
+            self.failed_files += 1
+        self.pbar.update(1)
+        
+        # Calculate and display statistics
+        elapsed_time = time.time() - self.start_time
+        avg_time_per_file = elapsed_time / self.processed_files if self.processed_files > 0 else 0
+        remaining_files = self.total_files - self.processed_files
+        estimated_time_remaining = remaining_files * avg_time_per_file
+        
+        # Update progress bar description
+        self.pbar.set_postfix({
+            'success_rate': f"{((self.processed_files - self.failed_files) / self.processed_files * 100):.1f}%" if self.processed_files > 0 else "N/A",
+            'eta': f"{estimated_time_remaining/60:.1f}min"
+        })
+    
+    def finalize(self):
+        """Display final statistics."""
+        self.pbar.close()
+        total_time = time.time() - self.start_time
+        
+        print("\nIngestion Summary:")
+        print(f"Total files processed: {self.processed_files}/{self.total_files}")
+        print(f"Successfully processed: {self.processed_files - self.failed_files}")
+        print(f"Failed: {self.failed_files}")
+        print(f"Total time: {total_time/60:.1f} minutes")
+        print(f"Average time per file: {total_time/self.processed_files:.1f} seconds")
+        print(f"Success rate: {((self.processed_files - self.failed_files) / self.processed_files * 100):.1f}%")
 
 class ContentIngester:
     """Handles content ingestion into the RAG system."""
@@ -58,6 +111,7 @@ class ContentIngester:
         self.config = ConfigManager(config_path).config
         self.pipeline = Pipeline(config_path)
         self.processed_files: Set[str] = set()
+        self.progress_tracker = None
         
     async def ingest_directory(self, directory: Path) -> None:
         """
@@ -67,6 +121,12 @@ class ContentIngester:
             directory: Path to content directory
         """
         try:
+            # Count total files for progress tracking
+            total_files = sum(1 for file in directory.rglob('*') 
+                            if file.suffix.lower() in self.SUPPORTED_EXTENSIONS)
+            
+            self.progress_tracker = ProgressTracker(total_files)
+            
             # First, find and process syllabus files
             syllabus_files = await self._find_syllabus_files(directory)
             syllabus_content = await self._process_syllabus_files(syllabus_files)
@@ -81,6 +141,9 @@ class ContentIngester:
             for subject, files in organized_content.items():
                 logger.info(f"Processing content for subject: {subject}")
                 await self._process_content_group(subject, files)
+                
+            # Display final statistics
+            self.progress_tracker.finalize()
                 
         except Exception as e:
             logger.error(f"Directory ingestion failed: {str(e)}", exc_info=True)
@@ -197,10 +260,14 @@ class ContentIngester:
                 # Mark as processed
                 self.processed_files.add(str(file_path))
                 
+                # Update progress
+                self.progress_tracker.update(success=True)
+                
                 logger.info(f"Processed {file_path} for subject {subject}")
                 
             except Exception as e:
                 logger.error(f"Error processing {file_path}: {str(e)}")
+                self.progress_tracker.update(success=False)
                 
     def _extract_course_structure(self, document: Document) -> Dict[str, Any]:
         """
