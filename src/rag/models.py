@@ -69,16 +69,12 @@ import numpy as np
 from uuid import uuid4
 
 class ProcessingStage(str, Enum):
-    """Extended processing stages for document lifecycle."""
-    RAW = "raw"
+    """Pipeline processing stages."""
     EXTRACTED = "extracted"
-    PREPROCESSED = "preprocessed"
     CHUNKED = "chunked"
-    EMBEDDED = "embedded"
-    INDEXED = "indexed"
-    RETRIEVED = "retrieved"
-    GENERATED = "generated"
     ANALYZED = "analyzed"
+    EDUCATIONAL_PROCESSED = "educational_processed"
+    FEEDBACK_PROCESSED = "feedback_processed"
 
 class ContentModality(str, Enum):
     """Supported content modalities with metadata requirements."""

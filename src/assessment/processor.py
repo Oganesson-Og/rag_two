@@ -1,9 +1,27 @@
 """
 Educational Assessment Processing Module
---------------------------------------
+----------------------------------------
 
 Comprehensive assessment processing system for evaluating student responses
 and providing detailed educational feedback with scoring and recommendations.
+Occurs at the end of the lesson. Lesson is a collection of continuous interactions with the user in a
+reasonably short amount of time. Say without a break of over 30 minutes. These results need to be stored 
+in a database.
+
+
+TODO: 
+    Track student sessions
+    Detect session completion
+    Generate assessments
+    Store performance records
+    Maintain clean separation of concerns
+    The system is also extensible for future enhancements such as:
+    Real-time analytics
+    Progress tracking
+    Performance reporting
+    Learning path recommendations
+    Check improvements over time
+    Check misconceptions over time
 
 Key Features:
 - Response evaluation and scoring

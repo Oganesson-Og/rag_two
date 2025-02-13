@@ -108,6 +108,25 @@ class PipelineError(RAGError):
     """Error in pipeline execution."""
     error_code: ClassVar[str] = "PIPE_ERR"
 
+class RateLimitError(RAGError):
+    """Error for rate limiting violations."""
+    error_code: ClassVar[str] = "RATE_LIMIT_ERR"
+
+class ResourceExhaustionError(RAGError):
+    """Error for resource exhaustion."""
+    error_code: ClassVar[str] = "RESOURCE_ERR"
+
+class ErrorCategory(Enum):
+    """Combined error categories."""
+    CONTENT = "content"
+    EMBEDDING = "embedding"
+    RETRIEVAL = "retrieval"
+    PROCESSING = "processing"
+    MATH = "math"
+    SYSTEM = "system"
+    DATABASE = "database"
+    VALIDATION = "validation"
+
 @dataclass
 class ErrorInfo:
     """Detailed information about an error occurrence."""
@@ -165,4 +184,32 @@ class ErrorReport:
         
         summary_parts = [f"{count} {error_type}(s)" 
                         for error_type, count in error_types.items()]
-        return "Error Summary: " + ", ".join(summary_parts) 
+        return "Error Summary: " + ", ".join(summary_parts)
+
+@dataclass
+class ErrorEvent:
+    """Enhanced error event tracking."""
+    error_id: str
+    timestamp: datetime
+    category: ErrorCategory
+    severity: ErrorSeverity
+    message: str
+    stack_trace: Optional[str]
+    context: Dict[str, Any]
+    recovery_steps: List[str]
+    resolved: bool = False
+    resolution_time: Optional[datetime] = None
+    
+    @classmethod
+    def from_error_info(cls, error_info: ErrorInfo, category: ErrorCategory) -> 'ErrorEvent':
+        """Create ErrorEvent from ErrorInfo."""
+        return cls(
+            error_id=f"{category.value}_{datetime.now().timestamp()}",
+            timestamp=error_info.timestamp,
+            category=category,
+            severity=error_info.severity,
+            message=error_info.message,
+            stack_trace=error_info.stack_trace,
+            context=error_info.context,
+            recovery_steps=[]
+        ) 

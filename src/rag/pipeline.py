@@ -51,7 +51,7 @@ Performance Considerations:
 
 Author: Keith Satuku
 Version: 1.0.0
-Created: 2024
+Created: 2025
 License: MIT
 """
 
@@ -84,6 +84,14 @@ from ..config.rag_config import ConfigManager, RAGConfig
 from ..config.embedding_config import EMBEDDING_CONFIG
 from ..config.domain_config import get_domain_config
 from ..document_processing.processors.diagram_analyzer import DiagramAnalyzer
+from ..standards.education_standards_manager import StandardsManager
+from ..feedback.feedback_processor import FeedbackProcessor
+from ..processors.math_content_processor import MathContentProcessor
+from ..nlp.cross_modal_processor import CrossModalProcessor
+from ..database.models import QdrantVectorStore, DatabaseConnection
+from ..utils.uuid import generate_uuid
+from ..llm.model_manager import LLMManager
+from ..error.models import ModelError
 
 logger = logging.getLogger(__name__)
 
@@ -187,6 +195,73 @@ class DiagramAnalysisStage(PipelineStage):
             ))
         return document
 
+class EducationalProcessingStage(PipelineStage):
+    """Educational content processing stage."""
+    
+    stage = ProcessingStage.EDUCATIONAL_PROCESSED
+    
+    def __init__(self, config: Dict[str, Any]):
+        super().__init__(config)
+        self.math_processor = MathContentProcessor(config.get('math', {}))
+        self.standards_manager = StandardsManager(config.get('standards', {}))
+        self.cross_modal_processor = CrossModalProcessor(config.get('cross_modal', {}))
+    
+    async def process(self, document: Document) -> Document:
+        """Process document with educational enhancements."""
+        with self.metrics.measure_time() as timer:
+            # Process mathematical content if present
+            if self.math_processor.has_math_content(document.content):
+                document.content = await self.math_processor.process(document.content)
+            
+            # Map educational standards
+            standards_mapping = await self.standards_manager.map_content(document.content)
+            document.metadata['standards'] = standards_mapping
+            
+            # Cross-modal educational analysis
+            if document.has_multiple_modalities():
+                document = await self.cross_modal_processor.process(document)
+            
+        self._record_metrics(document, ProcessingMetrics(
+            processing_time=timer.elapsed,
+            math_content_processed=bool(document.metadata.get('math_processed')),
+            standards_mapped=len(standards_mapping),
+            modalities_processed=len(document.processed_modalities)
+        ))
+        return document
+
+class FeedbackProcessingStage(PipelineStage):
+    """Educational feedback processing stage."""
+    
+    stage = ProcessingStage.FEEDBACK_PROCESSED
+    
+    def __init__(self, config: Dict[str, Any]):
+        super().__init__(config)
+        self.feedback_processor = FeedbackProcessor(config.get('feedback', {}))
+    
+    async def process(self, document: Document) -> Document:
+        """Process educational feedback."""
+        with self.metrics.measure_time() as timer:
+            feedback = await self.feedback_processor.process_document(
+                document.content,
+                document.metadata
+            )
+            document.metadata['educational_feedback'] = feedback
+            
+            # Update learning progress if student ID is present
+            if student_id := document.metadata.get('student_id'):
+                await self.feedback_processor.update_learning_progress(
+                    student_id=student_id,
+                    topic=document.metadata.get('topic'),
+                    performance=feedback.get('performance_metrics')
+                )
+        
+        self._record_metrics(document, ProcessingMetrics(
+            processing_time=timer.elapsed,
+            feedback_generated=bool(feedback),
+            learning_progress_updated=bool(student_id)
+        ))
+        return document
+
 class Pipeline:
     """
     Enhanced RAG pipeline with modular stages and comprehensive tracking.
@@ -206,11 +281,31 @@ class Pipeline:
             ProcessingStage.EXTRACTED: ExtractionStage(self.config.get_component_config('extraction')),
             ProcessingStage.CHUNKED: ChunkingStage(self.config.get_component_config('chunking')),
             ProcessingStage.ANALYZED: DiagramAnalysisStage(self.config.get_component_config('diagram')),
+            ProcessingStage.EDUCATIONAL_PROCESSED: EducationalProcessingStage(
+                self.config.get_component_config('educational')
+            ),
+            ProcessingStage.FEEDBACK_PROCESSED: FeedbackProcessingStage(
+                self.config.get_component_config('feedback')
+            ),
             # Add other stages as needed
         }
         
         # Initialize prompt generator
         self.prompt_generator = PromptGenerator(self.config.get_component_config('prompts'))
+        
+        # Initialize Qdrant for vectors
+        self.vector_store = QdrantVectorStore(
+            collection_name=self.config['qdrant']['collection'],
+            vector_size=self.config['qdrant']['vector_size']
+        )
+        
+        # Initialize PostgreSQL for educational data
+        self.db_connection = DatabaseConnection(
+            connection_params=self.config['postgres']
+        )
+        
+        # Initialize LLMManager
+        self.llm_manager = LLMManager(self.config.get('llm', {}))
         
     async def process_document(
         self,
@@ -277,7 +372,7 @@ class Pipeline:
             Generation result
         """
         try:
-            # Generate search prompt
+            # Generate search prompt with educational context
             search_prompt = self.prompt_generator.generate_search_prompt(
                 query, context
             )
@@ -288,13 +383,23 @@ class Pipeline:
                 options.get('max_chunks', 5) if options else 5
             )
             
-            # Generate response prompt
+            # Generate response prompt with educational considerations
             response_prompt = self.prompt_generator.generate_response_prompt(
                 query, relevant_chunks, context
             )
             
             # Generate response
             response_text = await self._generate_completion(response_prompt)
+            
+            # Process educational feedback if enabled
+            feedback = None
+            if options.get('feedback_enabled', True):
+                feedback = await self.stages[ProcessingStage.FEEDBACK_PROCESSED]\
+                    .feedback_processor.process_response(
+                        query=query,
+                        response=response_text,
+                        context=context
+                    )
             
             return GenerationResult(
                 text=response_text,
@@ -303,12 +408,17 @@ class Pipeline:
                 metadata={
                     "query": query,
                     "context": context,
-                    "options": options
+                    "options": options,
+                    "educational_feedback": feedback,
+                    "standards_alignment": self._get_standards_alignment(
+                        response_text,
+                        context.get('grade_level') if context else None
+                    )
                 }
             )
             
         except Exception as e:
-            logger.error(f"Response generation failed: {str(e)}", exc_info=True)
+            logger.error(f"Response generation failed: {str(e)}")
             raise
     
     async def _cache_document(self, document: Document):
@@ -546,7 +656,7 @@ class Pipeline:
 
     async def _generate_completion(self, prompt: str) -> str:
         """
-        Generate completion using configured LLM.
+        Generate completion with fallback support.
         
         Args:
             prompt: Input prompt for the LLM
@@ -555,33 +665,63 @@ class Pipeline:
             Generated completion text
         """
         try:
-            # Get LLM configuration
-            llm_config = self.config.get_component_config('llm')
-            
-            # Initialize OpenAI client
-            from openai import AsyncOpenAI
-            
-            client = AsyncOpenAI(
-                api_key=llm_config.get('api_key'),
-                organization=llm_config.get('organization')
+            return await self.llm_manager.generate_completion(
+                prompt,
+                system_prompt=self.config.get('system_prompt'),
+            )
+        except ModelError as e:
+            self.logger.error(f"All LLM models failed: {str(e)}")
+            raise
+
+    def _get_standards_alignment(
+        self,
+        text: str,
+        grade_level: Optional[str]
+    ) -> Dict[str, Any]:
+        """Get educational standards alignment for generated response."""
+        try:
+            standards_stage = self.stages[ProcessingStage.EDUCATIONAL_PROCESSED]
+            return standards_stage.standards_manager.get_alignment(
+                text, grade_level
+            )
+        except Exception as e:
+            logger.warning(f"Standards alignment failed: {str(e)}")
+            return {}
+
+    async def process_educational_session(
+        self,
+        student_id: str,
+        content: str,
+        session_id: Optional[str] = None
+    ):
+        """Process educational content with both vector and relational storage."""
+        try:
+            # Store vectors in Qdrant
+            vector = await self.generate_embedding(content)
+            qdrant_id = await self.vector_store.add_vector(
+                vector=vector,
+                metadata={"student_id": student_id}
             )
             
-            # Generate completion
-            response = await client.chat.completions.create(
-                model=llm_config.get('model_name', 'gpt-4'),
-                messages=[
-                    {"role": "system", "content": llm_config.get('system_prompt', '')},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=llm_config.get('temperature', 0.7),
-                max_tokens=llm_config.get('max_tokens', 1000),
-                top_p=llm_config.get('top_p', 1.0),
-                frequency_penalty=llm_config.get('frequency_penalty', 0.0),
-                presence_penalty=llm_config.get('presence_penalty', 0.0)
-            )
-            
-            return response.choices[0].message.content
+            # Store educational metadata in PostgreSQL
+            with self.db_connection.get_cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO content_metadata 
+                    (id, qdrant_id, content_type, educational_metadata)
+                    VALUES (%s, %s, %s, %s)
+                """, (
+                    generate_uuid(),
+                    qdrant_id,
+                    "educational_content",
+                    {
+                        "student_id": student_id,
+                        "session_id": session_id,
+                        "timestamp": datetime.now().isoformat()
+                    }
+                ))
+                
+            return qdrant_id
             
         except Exception as e:
-            self.logger.error(f"LLM completion failed: {str(e)}")
+            logger.error(f"Processing failed: {str(e)}")
             raise 
