@@ -67,6 +67,18 @@ License: MIT
 from typing import Dict, List, Optional, Union, Any
 from fastapi import FastAPI, HTTPException, File, UploadFile, Depends, status, BackgroundTasks, WebSocket
 from pydantic import BaseModel, Field
+
+# Remove preprocessor import and use extractors instead
+from ..document_processing.extractors import (
+    PDFExtractor,
+    DocxExtractor,
+    ExcelExtractor,
+    CSVExtractor,
+    TextExtractor,
+    AudioExtractor,
+    BaseExtractor
+)
+
 from ..retrieval.education_retriever import EducationRetriever
 from ..embeddings.education_benchmark import EducationBenchmark
 from ..config.domain_config import EDUCATION_DOMAINS
@@ -88,10 +100,10 @@ from ..audio.processor import AudioProcessor
 from ..config.settings import AUDIO_CONFIG
 
 # Import document processing components
-from src.document_processing.processor import DocumentProcessor
-from src.document_processing.processors.ocr import OCRProcessor
-from src.document_processing.preprocessor import Preprocessor
-from src.document_processing.processors.diagram_archive import DiagramAnalyzer
+from ..document_processing.processor import DocumentProcessor
+from ..document_processing.processors.ocr import OCRProcessor
+from ..document_processing.preprocessor import Preprocessor
+from ..document_processing.processors.diagram_archive import DiagramAnalyzer
 
 from ..embeddings.embedding_generator import EmbeddingGenerator
 
@@ -189,17 +201,85 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Initialize components with proper error handling
+# Define extractor mapping
+EXTRACTOR_MAP = {
+    'pdf': PDFExtractor,
+    'docx': DocxExtractor,
+    'xlsx': ExcelExtractor,
+    'csv': CSVExtractor,
+    'txt': TextExtractor,
+    'audio': AudioExtractor,
+    'mp3': AudioExtractor,
+    'wav': AudioExtractor,
+    'm4a': AudioExtractor,
+    'flac': AudioExtractor
+}
+
+class DocumentProcessor:
+    """Document processor using specialized extractors."""
+    
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        self.config = config or {}
+        self.extractors: Dict[str, BaseExtractor] = {}
+        
+        # Initialize extractors
+        for ext, extractor_class in EXTRACTOR_MAP.items():
+            try:
+                self.extractors[ext] = extractor_class(self.config.get(ext, {}))
+            except Exception as e:
+                logging.error(f"Failed to initialize {ext} extractor: {str(e)}")
+
+    async def process_document(
+        self,
+        content: Union[str, bytes],
+        file_type: str,
+        options: Optional[Dict[str, bool]] = None
+    ) -> Dict[str, Any]:
+        """
+        Process document using appropriate extractor.
+        
+        Args:
+            content: Document content
+            file_type: Type of document (pdf, docx, etc.)
+            options: Processing options
+            
+        Returns:
+            Processed document content and metadata
+        """
+        # Get appropriate extractor
+        extractor = self.extractors.get(file_type.lower())
+        if not extractor:
+            raise ValueError(f"Unsupported file type: {file_type}")
+            
+        try:
+            # Extract content using specialized extractor
+            result = await extractor.extract(content, options)
+            
+            # Add processing metadata
+            result['metadata'].update({
+                'processor': extractor.__class__.__name__,
+                'file_type': file_type,
+                'processing_options': options
+            })
+            
+            return result
+            
+        except Exception as e:
+            logging.error(f"Document processing failed: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Document processing failed: {str(e)}"
+            )
+
+# Initialize components
 try:
+    document_processor = DocumentProcessor()
+    education_retriever = EducationRetriever()
+    education_benchmark = EducationBenchmark()
     audio_processor = AudioProcessor(
         model_name=AUDIO_CONFIG.get('model', 'whisper-large-v3'),
         device='cuda' if torch.cuda.is_available() else 'cpu'
     )
-
-    document_processor = DocumentProcessor()
-    ocr_processor = OCRProcessor()
-    preprocessor = Preprocessor()
-    diagram_analyzer = DiagramAnalyzer()
     embedding_generator = EmbeddingGenerator()
 
 except Exception as e:
@@ -604,17 +684,18 @@ async def process_document(
         try:
             if file_type in ['png', 'jpg', 'jpeg', 'tiff', 'bmp']:
                 processing_result.update(
-                    ocr_processor.process_image(
+                    document_processor.process_document(
                         content,
-                        detect_diagrams=document.processing_options.get("analyze_diagrams", True),
-                        detect_tables=document.processing_options.get("extract_tables", True)
+                        file_type,
+                        document.processing_options
                     )
                 )
             elif file_type == 'pdf':
                 processing_result.update(
-                    document_processor.process_pdf(
+                    document_processor.process_document(
                         content,
-                        options=document.processing_options
+                        file_type,
+                        document.processing_options
                     )
                 )
             else:
